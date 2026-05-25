@@ -1,64 +1,44 @@
-import { z } from "zod"
+import { z } from "zod";
 
-export const landlordSchema = z.object({
-  surname: z
-    .string()
-    .min(1, "Prezime je obavezno")
-    .max(30, "Prezime može imati najviše 30 znakova"),
-  name: z
-    .string()
-    .min(1, "Ime je obavezno")
-    .max(30, "Ime može imati najviše 30 znakova"),
-  vrstaIznajmljivaca: z.enum(["fizicka_osoba", "obrt", "tvrtka"], {
-    required_error: "Vrsta iznajmljivača je obavezna",
-  }),
-  oib: z
-    .string()
-    .length(11, "OIB mora imati točno 11 znamenki")
-    .regex(/^\d{11}$/, "OIB smije sadržavati samo znamenke"),
-  cityId: z.coerce
-    .number({ required_error: "Grad je obavezan" })
-    .int("Odaberite valjani grad")
-    .positive("Odaberite grad"),
-  address: z
-    .string()
-    .min(1, "Adresa je obavezna")
-    .max(100, "Adresa može imati najviše 100 znakova"),
-  phone: z
-    .string()
-    .min(1, "Telefon je obavezan")
-    .max(50, "Broj telefona može imati najviše 50 znakova"),
-  iban: z
-    .string()
-    .min(1, "IBAN je obavezan")
-    .max(50, "IBAN može imati najviše 50 znakova"),
-  rjesenje: z
-    .string()
-    .max(30, "Rješenje može imati najviše 30 znakova")
-    .optional()
-    .or(z.literal("")),
-  brUgovora: z
-    .string()
-    .max(30, "Broj ugovora može imati najviše 30 znakova")
-    .optional()
-    .or(z.literal("")),
-  tipProvizije: z.enum(["P", "I"], {
-    required_error: "Tip provizije je obavezan",
-  }),
-  iznos: z.coerce
-    .number({ required_error: "Iznos provizije je obavezan" })
-    .positive("Iznos mora biti veći od 0")
-    .max(999999.99, "Iznos je prevelik"),
-  eVisitName: z
-    .string()
-    .max(30, "eVisit korisničko ime može imati najviše 30 znakova")
-    .optional()
-    .or(z.literal("")),
-  eVisitPass: z
-    .string()
-    .max(30, "eVisit lozinka može imati najviše 30 znakova")
-    .optional()
-    .or(z.literal("")),
-})
+export const landlordSchema = z
+  .object({
+    surname: z.string().min(1, "Prezime je obavezno").max(30),
+    name: z.string().min(1, "Ime je obavezno").max(30),
+    oib: z
+      .string()
+      .length(11, "OIB mora imati točno 11 znakova")
+      .regex(/^\d+$/, "OIB smije sadržavati samo brojeve"),
+    cityId: z.number().min(1, "Grad je obavezan"),
+    address: z.string().min(1, "Adresa je obavezna").max(100),
+    phone: z.string().max(50).optional().or(z.literal("")),
+    email: z
+      .string()
+      .email("Neispravan format email adrese")
+      .max(100)
+      .optional()
+      .or(z.literal("")),
+    iban: z.string().min(1, "IBAN je obavezan").max(50),
+    vrstaIznajmljivaca: z.enum(["fizicka_osoba", "obrt", "tvrtka"]),
+    rjesenje: z.string().max(30).optional().or(z.literal("")),
+    brUgovora: z.string().max(30).optional().or(z.literal("")),
+    eVisitName: z.string().max(30).optional().or(z.literal("")),
+    eVisitPass: z.string().max(30).optional().or(z.literal("")),
+    prioritetan: z.boolean().default(false),
+  })
+  .and(
+    z.discriminatedUnion("tipProvizije", [
+      z.object({
+        tipProvizije: z.literal("P"),
+        iznos: z
+          .number()
+          .positive("Iznos mora biti veći od 0")
+          .max(99.99, "Postotak mora biti manji od 100"),
+      }),
+      z.object({
+        tipProvizije: z.literal("I"),
+        iznos: z.literal(0),
+      }),
+    ]),
+  );
 
-export type LandlordFormValues = z.infer<typeof landlordSchema>
+export type LandlordFormValues = z.infer<typeof landlordSchema>;

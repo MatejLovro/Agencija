@@ -1,0 +1,1 @@
+ALTER TABLE "pricelist" ADD COLUMN "landlord_price" numeric(10, 2);
