@@ -2,8 +2,7 @@ import { z } from "zod";
 
 export const landlordSchema = z
   .object({
-    surname: z.string().min(1, "Prezime je obavezno").max(30),
-    name: z.string().min(1, "Ime je obavezno").max(30),
+    // Common fields
     oib: z
       .string()
       .length(11, "OIB mora imati točno 11 znakova")
@@ -18,13 +17,44 @@ export const landlordSchema = z
       .optional()
       .or(z.literal("")),
     iban: z.string().min(1, "IBAN je obavezan").max(50),
-    vrstaIznajmljivaca: z.enum(["fizicka_osoba", "obrt", "tvrtka"]),
     rjesenje: z.string().max(30).optional().or(z.literal("")),
     brUgovora: z.string().max(30).optional().or(z.literal("")),
     eVisitName: z.string().max(30).optional().or(z.literal("")),
     eVisitPass: z.string().max(30).optional().or(z.literal("")),
     prioritetan: z.boolean().default(false),
   })
+  .and(
+    z.discriminatedUnion("vrstaIznajmljivaca", [
+      // Fizička osoba — ime i prezime obavezni, datum rođenja obavezan
+      z.object({
+        vrstaIznajmljivaca: z.literal("fizicka_osoba"),
+        surname: z.string().min(1, "Prezime je obavezno").max(30),
+        name: z.string().min(1, "Ime je obavezno").max(30),
+        datumRodjenja: z.string().min(1, "Datum rođenja je obavezan"),
+      }),
+      // Fizička osoba PDV — isto kao fizička osoba
+      z.object({
+        vrstaIznajmljivaca: z.literal("fizicka_osoba_pdv"),
+        surname: z.string().min(1, "Prezime je obavezno").max(30),
+        name: z.string().min(1, "Ime je obavezno").max(30),
+        datumRodjenja: z.string().min(1, "Datum rođenja je obavezan"),
+      }),
+      // Obrt — naziv i vlasnik obavezni, datum rođenja nije obavezan
+      z.object({
+        vrstaIznajmljivaca: z.literal("obrt"),
+        surname: z.string().min(1, "Naziv obrta je obavezan").max(30),
+        name: z.string().min(1, "Ime vlasnika je obavezno").max(30),
+        datumRodjenja: z.string().optional(),
+      }),
+      // Tvrtka — samo naziv obavezan, ime nije obavezno, datum rođenja nije obavezan
+      z.object({
+        vrstaIznajmljivaca: z.literal("tvrtka"),
+        surname: z.string().min(1, "Naziv tvrtke je obavezan").max(30),
+        name: z.string().max(30).optional().or(z.literal("")),
+        datumRodjenja: z.string().optional(),
+      }),
+    ]),
+  )
   .and(
     z.discriminatedUnion("tipProvizije", [
       z.object({

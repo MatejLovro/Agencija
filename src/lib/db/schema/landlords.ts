@@ -7,6 +7,7 @@ import {
   numeric,
   timestamp,
   boolean,
+  date,
 } from "drizzle-orm/pg-core";
 import { agencies } from "./agencies";
 import { cities } from "./cities";
@@ -15,6 +16,7 @@ export const tipProvizijeEnum = pgEnum("tip_provizije", ["P", "I"]);
 
 export const vrstaIznajmljivacaEnum = pgEnum("vrsta_iznajmljivaca", [
   "fizicka_osoba",
+  "fizicka_osoba_pdv",
   "obrt",
   "tvrtka",
 ]);
@@ -39,6 +41,7 @@ export const landlords = pgTable("landlords", {
   brUgovora: varchar("br_ugovora", { length: 30 }),
   tipProvizije: tipProvizijeEnum("tip_provizije").notNull(),
   iznos: numeric("iznos", { precision: 10, scale: 2 }).notNull(),
+  datumRodjenja: date("datum_rodjenja"),
   eVisitName: varchar("evisit_name", { length: 30 }),
   eVisitPass: varchar("evisit_pass", { length: 30 }),
   prioritetan: boolean("prioritetan").notNull().default(false),

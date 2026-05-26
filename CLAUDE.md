@@ -258,4 +258,4 @@ export const pricelist = pgTable("pricelist", {
 
 - Projekt se razvija na dva računala (kuća i posao) — Neon PostgreSQL omogućuje dijeljenu bazu bez lokalnog sinkroniziranja
 - Multi-tenancy nije aktivan za sada, ali **svaki entitet u bazi treba imati `agency_id` foreign key** od samog početka — to je jedina promjena koja je potrebna kada se aplikacija pretvori u SaaS; bez nje bi migracija bila bolna
-- Autentikacija se implementira kasnije
+- Autentifikacija se implementira kasnije

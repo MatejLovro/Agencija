@@ -24,7 +24,7 @@ export async function actionCreateLandlord(data: LandlordFormValues) {
   const landlord = await createLandlord({
     agencyId: AGENCY_ID,
     surname: data.surname,
-    name: data.name,
+    name: data.name || "",
     oib: data.oib,
     cityId: data.cityId,
     address: data.address,
@@ -51,7 +51,7 @@ export async function actionUpdateLandlord(
 ) {
   const landlord = await updateLandlord(id, {
     surname: data.surname,
-    name: data.name,
+    name: data.name || "",
     oib: data.oib,
     cityId: data.cityId,
     address: data.address,
@@ -123,6 +123,8 @@ export async function actionCreateAccommodation(
     aktivnostBicikliranje: data.aktivnostBicikliranje,
     aktivnostRonjenje: data.aktivnostRonjenje,
     aktivnostPlaninarenje: data.aktivnostPlaninarenje,
+    katastarskaOpcina: data.katastarskaOpcina || null,
+    katastarskaCestica: data.katastarskaCestica || null,
   });
 
   revalidatePath("/iznajmljivaci");
@@ -176,6 +178,8 @@ export async function actionUpdateAccommodation(
     aktivnostBicikliranje: data.aktivnostBicikliranje,
     aktivnostRonjenje: data.aktivnostRonjenje,
     aktivnostPlaninarenje: data.aktivnostPlaninarenje,
+    katastarskaOpcina: data.katastarskaOpcina || null,
+    katastarskaCestica: data.katastarskaCestica || null,
   });
 
   revalidatePath("/iznajmljivaci");

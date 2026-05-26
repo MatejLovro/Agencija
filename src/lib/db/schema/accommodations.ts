@@ -92,7 +92,8 @@ export const accommodations = pgTable("accommodations", {
   aktivnostPlaninarenje: boolean("aktivnost_planinarenje")
     .notNull()
     .default(false),
-
+  katastarskaOpcina: varchar("katastarska_opcina", { length: 100 }),
+  katastarskaCestica: varchar("katastarska_cestica", { length: 50 }),
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

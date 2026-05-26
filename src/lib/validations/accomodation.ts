@@ -70,6 +70,8 @@ export const accommodationSchema = z.object({
   aktivnostBicikliranje: z.boolean().default(false),
   aktivnostRonjenje: z.boolean().default(false),
   aktivnostPlaninarenje: z.boolean().default(false),
+  katastarskaOpcina: z.string().max(100).optional().or(z.literal("")),
+  katastarskaCestica: z.string().max(50).optional().or(z.literal("")),
 });
 
 export type AccommodationFormValues = z.infer<typeof accommodationSchema>;
