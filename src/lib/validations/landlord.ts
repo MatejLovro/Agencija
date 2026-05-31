@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { validateOib } from "@/lib/utils/validateOib";
+import { validateDatumRodjenja } from "@/lib/utils/dates";
 
 export const landlordSchema = z
   .object({
@@ -6,7 +8,8 @@ export const landlordSchema = z
     oib: z
       .string()
       .length(11, "OIB mora imati točno 11 znakova")
-      .regex(/^\d+$/, "OIB smije sadržavati samo brojeve"),
+      .regex(/^\d+$/, "OIB smije sadržavati samo brojeve")
+      .refine(validateOib, "OIB nije ispravan"),
     cityId: z.number().min(1, "Grad je obavezan"),
     address: z.string().min(1, "Adresa je obavezna").max(100),
     phone: z.string().max(50).optional().or(z.literal("")),
@@ -30,21 +33,39 @@ export const landlordSchema = z
         vrstaIznajmljivaca: z.literal("fizicka_osoba"),
         surname: z.string().min(1, "Prezime je obavezno").max(30),
         name: z.string().min(1, "Ime je obavezno").max(30),
-        datumRodjenja: z.string().min(1, "Datum rođenja je obavezan"),
+        datumRodjenja: z
+          .string()
+          .min(1, "Datum rođenja je obavezan")
+          .refine(
+            validateDatumRodjenja,
+            "Datum nije ispravan ili iznajmljivač ima više od 85 godina",
+          ),
       }),
       // Fizička osoba PDV — isto kao fizička osoba
       z.object({
         vrstaIznajmljivaca: z.literal("fizicka_osoba_pdv"),
         surname: z.string().min(1, "Prezime je obavezno").max(30),
         name: z.string().min(1, "Ime je obavezno").max(30),
-        datumRodjenja: z.string().min(1, "Datum rođenja je obavezan"),
+        datumRodjenja: z
+          .string()
+          .min(1, "Datum rođenja je obavezan")
+          .refine(
+            validateDatumRodjenja,
+            "Datum nije ispravan ili iznajmljivač ima više od 85 godina",
+          ),
       }),
       // Obrt — naziv i vlasnik obavezni, datum rođenja nije obavezan
       z.object({
         vrstaIznajmljivaca: z.literal("obrt"),
         surname: z.string().min(1, "Naziv obrta je obavezan").max(30),
         name: z.string().min(1, "Ime vlasnika je obavezno").max(30),
-        datumRodjenja: z.string().optional(),
+        datumRodjenja: z
+          .string()
+          .optional()
+          .refine(
+            (val) => !val || validateDatumRodjenja(val),
+            "Datum nije ispravan ili iznajmljivač ima više od 85 godina",
+          ),
       }),
       // Tvrtka — samo naziv obavezan, ime nije obavezno, datum rođenja nije obavezan
       z.object({

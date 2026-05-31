@@ -7,7 +7,14 @@ export async function getCities() {
   return await db.select().from(cities).orderBy(cities.name);
 }
 
-export async function createCity(name: string, zip?: string) {
-  const [city] = await db.insert(cities).values({ name, zip }).returning();
-  return city;
+export async function createCity(data: { name: string; zip?: string | null }) {
+  const result = await db
+    .insert(cities)
+    .values({
+      name: data.name,
+      zip: data.zip || null,
+    })
+    .returning();
+
+  return result[0];
 }

@@ -1,0 +1,819 @@
+{
+  "id": "ac61d4ad-2e14-4ede-8a33-57e76c633d9b",
+  "prevId": "95f9ce3e-bcdb-4cb3-90fc-e774d88e1ee1",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.agencies": {
+      "name": "agencies",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "oib": {
+          "name": "oib",
+          "type": "varchar(11)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "agencies_oib_unique": {
+          "name": "agencies_oib_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "oib"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.cities": {
+      "name": "cities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "cities_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "zip": {
+          "name": "zip",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "cities_name_unique": {
+          "name": "cities_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.landlords": {
+      "name": "landlords",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "agency_id": {
+          "name": "agency_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "surname": {
+          "name": "surname",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vrsta_iznajmljivaca": {
+          "name": "vrsta_iznajmljivaca",
+          "type": "vrsta_iznajmljivaca",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "oib": {
+          "name": "oib",
+          "type": "varchar(11)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "city_id": {
+          "name": "city_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "iban": {
+          "name": "iban",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rjesenje": {
+          "name": "rjesenje",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "br_ugovora": {
+          "name": "br_ugovora",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tip_provizije": {
+          "name": "tip_provizije",
+          "type": "tip_provizije",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "iznos": {
+          "name": "iznos",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "datum_rodjenja": {
+          "name": "datum_rodjenja",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evisit_name": {
+          "name": "evisit_name",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evisit_pass": {
+          "name": "evisit_pass",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prioritetan": {
+          "name": "prioritetan",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "landlords_agency_oib_idx": {
+          "name": "landlords_agency_oib_idx",
+          "columns": [
+            {
+              "expression": "agency_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "oib",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "landlords_agency_id_agencies_id_fk": {
+          "name": "landlords_agency_id_agencies_id_fk",
+          "tableFrom": "landlords",
+          "tableTo": "agencies",
+          "columnsFrom": [
+            "agency_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "landlords_city_id_cities_id_fk": {
+          "name": "landlords_city_id_cities_id_fk",
+          "tableFrom": "landlords",
+          "tableTo": "cities",
+          "columnsFrom": [
+            "city_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.accommodations": {
+      "name": "accommodations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "agency_id": {
+          "name": "agency_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "landlord_id": {
+          "name": "landlord_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vrsta_apartmana": {
+          "name": "vrsta_apartmana",
+          "type": "vrsta_apartmana",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "city_id": {
+          "name": "city_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "web_url": {
+          "name": "web_url",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "broj_zvjezdica": {
+          "name": "broj_zvjezdica",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kategorizacijski_broj": {
+          "name": "kategorizacijski_broj",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "broj_soba": {
+          "name": "broj_soba",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "broj_kreveta": {
+          "name": "broj_kreveta",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "broj_pomocnih_lezajeva": {
+          "name": "broj_pomocnih_lezajeva",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "max_osoba": {
+          "name": "max_osoba",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "aktivan": {
+          "name": "aktivan",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "prioritetan": {
+          "name": "prioritetan",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "cisti_agencija": {
+          "name": "cisti_agencija",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "opis": {
+          "name": "opis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ima_klima": {
+          "name": "ima_klima",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_parking": {
+          "name": "ima_parking",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_wifi": {
+          "name": "ima_wifi",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_rostilj": {
+          "name": "ima_rostilj",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_terasu": {
+          "name": "ima_terasu",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pogled_na_more": {
+          "name": "pogled_na_more",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "kucni_ljubimac": {
+          "name": "kucni_ljubimac",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "nepusaci": {
+          "name": "nepusaci",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pristupacno_invalidima": {
+          "name": "pristupacno_invalidima",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_kuhinju": {
+          "name": "ima_kuhinju",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_cajnu_kuhinju": {
+          "name": "ima_cajnu_kuhinju",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "broj_kupaonica": {
+          "name": "broj_kupaonica",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kupaona_tus": {
+          "name": "kupaona_tus",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_jacuzzi": {
+          "name": "ima_jacuzzi",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "kat": {
+          "name": "kat",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ima_bazen": {
+          "name": "ima_bazen",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_spa": {
+          "name": "ima_spa",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_fitness": {
+          "name": "ima_fitness",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_restoran": {
+          "name": "ima_restoran",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "ima_punjac_auta": {
+          "name": "ima_punjac_auta",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "udaljenost_more": {
+          "name": "udaljenost_more",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "udaljenost_centar": {
+          "name": "udaljenost_centar",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "udaljenost_trgovina": {
+          "name": "udaljenost_trgovina",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "aktivnost_bicikliranje": {
+          "name": "aktivnost_bicikliranje",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "aktivnost_ronjenje": {
+          "name": "aktivnost_ronjenje",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "aktivnost_planinarenje": {
+          "name": "aktivnost_planinarenje",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "katastarska_opcina": {
+          "name": "katastarska_opcina",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "katastarska_cestica": {
+          "name": "katastarska_cestica",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "accommodations_agency_id_agencies_id_fk": {
+          "name": "accommodations_agency_id_agencies_id_fk",
+          "tableFrom": "accommodations",
+          "tableTo": "agencies",
+          "columnsFrom": [
+            "agency_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "accommodations_landlord_id_landlords_id_fk": {
+          "name": "accommodations_landlord_id_landlords_id_fk",
+          "tableFrom": "accommodations",
+          "tableTo": "landlords",
+          "columnsFrom": [
+            "landlord_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "accommodations_city_id_cities_id_fk": {
+          "name": "accommodations_city_id_cities_id_fk",
+          "tableFrom": "accommodations",
+          "tableTo": "cities",
+          "columnsFrom": [
+            "city_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.pricelist": {
+      "name": "pricelist",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "accommodation_id": {
+          "name": "accommodation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_from": {
+          "name": "date_from",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_to": {
+          "name": "date_to",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_per_night": {
+          "name": "price_per_night",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "landlord_price": {
+          "name": "landlord_price",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "pricelist_accommodation_id_accommodations_id_fk": {
+          "name": "pricelist_accommodation_id_accommodations_id_fk",
+          "tableFrom": "pricelist",
+          "tableTo": "accommodations",
+          "columnsFrom": [
+            "accommodation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.tip_provizije": {
+      "name": "tip_provizije",
+      "schema": "public",
+      "values": [
+        "P",
+        "I"
+      ]
+    },
+    "public.vrsta_iznajmljivaca": {
+      "name": "vrsta_iznajmljivaca",
+      "schema": "public",
+      "values": [
+        "fizicka_osoba",
+        "fizicka_osoba_pdv",
+        "obrt",
+        "tvrtka"
+      ]
+    },
+    "public.vrsta_apartmana": {
+      "name": "vrsta_apartmana",
+      "schema": "public",
+      "values": [
+        "apartman",
+        "soba",
+        "studio",
+        "vila",
+        "kuca",
+        "mobilna_kucica"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

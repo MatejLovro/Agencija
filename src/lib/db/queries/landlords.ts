@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { landlords, cities } from "@/lib/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, and, ne } from "drizzle-orm";
 
 export async function getLandlords() {
   return db
@@ -39,6 +39,40 @@ export async function updateLandlord(
     .where(eq(landlords.id, id))
     .returning();
   return landlord;
+}
+
+export async function getLandlordById(id: string) {
+  const result = await db
+    .select()
+    .from(landlords)
+    .where(eq(landlords.id, id))
+    .limit(1);
+
+  return result[0] ?? null;
+}
+
+export async function getLandlordByOib(oib: string, excludeId?: string) {
+  const agencyId = process.env.AGENCY_ID!;
+
+  const conditions = excludeId
+    ? and(
+        eq(landlords.oib, oib),
+        eq(landlords.agencyId, agencyId),
+        ne(landlords.id, excludeId),
+      )
+    : and(eq(landlords.oib, oib), eq(landlords.agencyId, agencyId));
+
+  const result = await db
+    .select({
+      id: landlords.id,
+      surname: landlords.surname,
+      name: landlords.name,
+    })
+    .from(landlords)
+    .where(conditions)
+    .limit(1);
+
+  return result[0] ?? null;
 }
 
 export type LandlordRow = Awaited<ReturnType<typeof getLandlords>>[number];

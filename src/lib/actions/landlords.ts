@@ -12,6 +12,7 @@ import {
   updatePricelistEntry,
   deletePricelistEntry,
 } from "@/lib/db/queries/pricelist";
+import { getLandlordByOib } from "@/lib/db/queries/landlords";
 import type { LandlordFormValues } from "@/lib/validations/landlord";
 import type { AccommodationFormValues } from "@/lib/validations/accomodation";
 import type { PricelistEntryFormValues } from "@/lib/validations/pricelist";
@@ -21,6 +22,14 @@ const AGENCY_ID = process.env.AGENCY_ID!;
 // --- Landlord actions ---
 
 export async function actionCreateLandlord(data: LandlordFormValues) {
+  // provjera postoji li iznajmljivač s tim OIB-om
+  const existing = await getLandlordByOib(data.oib);
+  if (existing) {
+    return {
+      error: `Iznajmljivač s OIB-om ${data.oib} je već upisan.`,
+    };
+  }
+
   const landlord = await createLandlord({
     agencyId: AGENCY_ID,
     surname: data.surname,
@@ -42,13 +51,21 @@ export async function actionCreateLandlord(data: LandlordFormValues) {
   });
 
   revalidatePath("/iznajmljivaci");
-  return landlord;
+  return { data: landlord };
 }
 
 export async function actionUpdateLandlord(
   id: string,
   data: LandlordFormValues,
 ) {
+  // provjera postoji li iznajmljivač s tim OIB-om
+  const existing = await getLandlordByOib(data.oib, id);
+  if (existing) {
+    return {
+      error: `Iznajmljivač s OIB-om ${data.oib} je već upisan.`,
+    };
+  }
+
   const landlord = await updateLandlord(id, {
     surname: data.surname,
     name: data.name || "",
@@ -69,7 +86,7 @@ export async function actionUpdateLandlord(
   });
 
   revalidatePath("/iznajmljivaci");
-  return landlord;
+  return { data: landlord };
 }
 
 // --- Accommodation actions ---
