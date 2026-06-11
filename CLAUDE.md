@@ -222,6 +222,60 @@ const vrstaLabel: Record<string, string> = {
 };
 ```
 
+### Utility funkcije
+
+- Datum utility funkcije (parseHrDate, validateDatumRodjenja...):
+  `src/lib/utils/dates.ts`
+- Formater funkcije (capitalizeWords...):
+  `src/lib/utils/formatters.ts`
+
+### NoviIznajmljivacClient / UrediIznajmljivacClient pattern
+
+Stranice `/iznajmljivaci/novi` i `/iznajmljivaci/[id]/uredi` dijele isti
+layout: forma iznajmljivača gore, tablice apartmana i cjenika dolje.
+
+**Ključne odluke:**
+
+- `page.tsx` ostaje Server Component — fetchuje gradove, iznajmljivača i
+  apartmane; predaje ih Client Componentu
+- Client Component drži sav state (apartmani, cjenici, selekcije, modali)
+- Nakon spremi novog iznajmljivača, `LandlordForm` poziva `onSaved` callback
+  umjesto redirecta; gumb Spremi postaje disabled
+- Cjenici se učitavaju lazy (tek kada korisnik klikne na apartman)
+- Cjenici su keširani u `Record<string, PricelistRow[]>` — mapa
+  `accommodationId → redovi`; nema ponovnog fetchanja za već učitane
+
+**ApartmanModal:**
+
+- Multi-step forma s 4 kartice: Osnovni podaci, Sadržaji,
+  Lokacija i aktivnosti, Ostalo
+- Slobodna navigacija između kartica bez validacijskih gatova
+- Kratki naziv uvijek uppercase
+- Pri otvaranju za novi apartman: grad i adresa se preuzimaju od iznajmljivača
+- Pri otvaranju za uredi: `useEffect` na `[open, defaultValues]` resetira
+  formu s podacima iz baze
+- `handleClose` čuva vrstu, zvjezdice, grad i adresu između dodavanja
+
+**CjenikModal:**
+
+- Datum od/do u HR formatu s auto-formatiranjem
+- Validacija: datum do mora biti nakon datuma od (ISO usporedba)
+- `nextDateFrom`: automatski se nudi zadnji `dateTo + 1 dan`
+- Polje "Cijena prema iznajmljivaču" enabled samo ako `tipProvizije === "I"`
+- `autoFocus` na polje cijene pri otvaranju
+- Pri uredi: `useEffect` na `[open]` resetira formu s postojećim podacima
+
+### AccommodationRow interface
+
+Definiran i exportan iz `ApartmanModal.tsx`. Sadrži:
+`id, name, vrstaApartmana, brojSoba, brojKreveta, brojPomocnihLezajeva`
+
+### PricelistRow interface
+
+Definiran i exportan iz `CjenikModal.tsx`. Sadrži:
+`id, dateFrom, dateTo, pricePerNight, landlordPrice`
+(datumi u ISO formatu u stanju, HR format samo za prikaz)
+
 ---
 
 ## ZOD NAPOMENE (v4)
@@ -276,6 +330,14 @@ Prikaz u stilu Gantt dijagrama:
 
 ## UX KONVENCIJE — COMBOBOX S DODAVANJEM
 
+- Fiksni gumb "Dodaj novi..." ispod liste, izvan `CommandList`,
+  odvojen s `border-t`
+- Koristi `onMouseDown` s `e.preventDefault()` umjesto `onClick`
+- Otvara zasebni `Dialog` s formom za unos
+- Nakon spremanja: novi zapis se dodaje u lokalnu listu i automatski
+  selektira — bez refresha stranice
+- Primjer: `CityCombobox.tsx` + `AddCityDialog.tsx`
+
 ### Princip
 
 Combobox koji omogućuje inline dodavanje novog zapisa (grad, vrsta,
@@ -309,21 +371,47 @@ u search polje.
 - `AGENCY_ID` se čita iz `process.env.AGENCY_ID` direktno u query sloju
   (`lib/db/queries/`), ne prosljeđuje se kroz action → query
 
+### Indeksi
+
+- Na tablici `landlords` postoji kompozitni unique indeks na
+  `(agency_id, oib)` umjesto unique constraint samo na `oib`
+- `.unique()` na `oib` polju je uklonjeno iz Drizzle sheme
+
 ### Forme — UX konvencije
 
-- `autoComplete="new-password"` na svim osobnim poljima (ime, prezime, OIB...)
-  jer Chrome ignorira `autoComplete="off"` za prepoznatljiva polja
-- Numerički inputi s default vrijednošću 0: dodati `onFocus={(e) => e.target.select()}`
-- Datum u hrvatskom formatu (dd.mm.gggg.) — koristiti `type="text"` s auto-formatiranjem,
-  ne `type="date"`
-- Kada korisnik promijeni vrstu iznajmljivača, resetirati polja koja nisu relevantna
-  za novu vrstu (npr. `name` i `datumRodjenja` za Tvrtku)
+- `autoComplete="new-password"` na svim osobnim poljima (ime, prezime,
+  OIB...) — Chrome ignorira `autoComplete="off"` za prepoznatljiva polja
+- Numerički inputi s default vrijednošću 0: `onFocus={(e) => e.target.select()}`
+- Datum u hrvatskom formatu `dd.mm.gggg.` — koristiti `type="text"` s
+  auto-formatiranjem, ne `type="date"`
+- Polje lozinka: toggle show/hide s ikonom Eye/EyeOff, `tabIndex={-1}` na
+  toggle gumbu
+- Kada korisnik promijeni vrstu iznajmljivača, resetirati polja koja nisu
+  relevantna za novu vrstu (`name` i `datumRodjenja` za tvrtku,
+  `datumRodjenja` za obrt)
 
 ### Greške iz Server Actions
 
 - Actions vraćaju `{ data }` ili `{ error: string }` — nikad ne throwaju
 - Greška se prikazuje pomoću `form.setError("poljeNaziv", { type: "manual", message })`
   direktno ispod relevantnog polja, bez toast biblioteke
+
+### Datumi
+
+- HR format `dd.mm.gggg.` u formama, ISO `yyyy-mm-dd` u bazi
+- Konverzija: `isoToHrDate()` za prikaz, `hrDateToIso()` za spremanje
+- Validacija datuma rođenja: ne smije biti u budućnosti ni stariji od 85 god.
+- Sve date utility funkcije: `src/lib/utils/dates.ts`
+
+### Formatiranje teksta
+
+- `capitalizeWords()` na poljima ime, prezime, naziv grada
+- Sve formatter funkcije: `src/lib/utils/formatters.ts`
+
+### OIB validacija
+
+- Algoritam ISO 7064 MOD 11,10 u `src/lib/utils/validateOib.ts`
+- Primjenjuje se kao Zod `.refine()` u validacijskoj shemi
 
 ---
 

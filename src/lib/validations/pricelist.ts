@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { hrDateToIso } from "@/lib/utils/dates";
 
 export const pricelistEntrySchema = z
   .object({
@@ -10,9 +11,17 @@ export const pricelistEntrySchema = z
       .positive("Cijena mora biti pozitivan broj")
       .optional(),
   })
-  .refine((data) => data.dateFrom < data.dateTo, {
-    message: "Datum do mora biti nakon datuma od",
-    path: ["dateTo"],
-  });
+  .refine(
+    (data) => {
+      const from = hrDateToIso(data.dateFrom);
+      const to = hrDateToIso(data.dateTo);
+      if (!from || !to) return true; // ako datumi nisu kompletni, preskočи
+      return from < to;
+    },
+    {
+      message: "Datum do mora biti nakon datuma od",
+      path: ["dateTo"],
+    },
+  );
 
 export type PricelistEntryFormValues = z.infer<typeof pricelistEntrySchema>;

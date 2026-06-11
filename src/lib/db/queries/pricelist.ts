@@ -9,6 +9,7 @@ export async function getPricelistByAccommodation(accommodationId: string) {
       dateFrom: pricelist.dateFrom,
       dateTo: pricelist.dateTo,
       pricePerNight: pricelist.pricePerNight,
+      landlordPrice: pricelist.landlordPrice,
     })
     .from(pricelist)
     .where(eq(pricelist.accommodationId, accommodationId))

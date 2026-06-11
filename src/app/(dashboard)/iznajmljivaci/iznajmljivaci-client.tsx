@@ -16,6 +16,7 @@ import type { LandlordRow } from "@/lib/db/queries/landlords";
 import type { AccommodationRow } from "@/lib/db/queries/accommodations";
 import type { PricelistRow } from "@/lib/db/queries/pricelist";
 import { fetchAccommodations, fetchPricelist } from "./actions";
+import { useRouter } from "next/navigation";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -37,6 +38,7 @@ type SortDir = "asc" | "desc";
 function vrstaLabel(vrsta: string) {
   const map: Record<string, string> = {
     fizicka_osoba: "Fizička osoba",
+    fizicka_osoba_pdv: "Fizička osoba (PDV)",
     obrt: "Obrt",
     tvrtka: "Tvrtka",
   };
@@ -146,6 +148,8 @@ export function IznajmljivaciClient({
     return <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
 
+  const router = useRouter();
+
   return (
     <div className="flex flex-col gap-6">
       {/* Toolbar */}
@@ -164,11 +168,18 @@ export function IznajmljivaciClient({
             <Trash2 className="mr-1.5 h-4 w-4" />
             Briši
           </Button>
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!selectedLandlord}
+            onClick={() =>
+              router.push(`/iznajmljivaci/${selectedLandlord.id}/uredi`)
+            }
+          >
             <Pencil className="mr-1.5 h-4 w-4" />
             Promijeni
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={() => router.push("/iznajmljivaci/novi")}>
             <Plus className="mr-1.5 h-4 w-4" />
             Dodaj
           </Button>

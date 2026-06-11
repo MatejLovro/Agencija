@@ -46,3 +46,12 @@ export async function deleteAccommodation(id: string) {
 export type AccommodationRow = Awaited<
   ReturnType<typeof getAccommodationsByLandlord>
 >[number];
+
+export async function getAccommodationById(id: string) {
+  const result = await db
+    .select()
+    .from(accommodations)
+    .where(eq(accommodations.id, id))
+    .limit(1);
+  return result[0] ?? null;
+}

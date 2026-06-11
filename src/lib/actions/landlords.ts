@@ -13,9 +13,12 @@ import {
   deletePricelistEntry,
 } from "@/lib/db/queries/pricelist";
 import { getLandlordByOib } from "@/lib/db/queries/landlords";
+import { hrDateToIso } from "../utils/dates";
 import type { LandlordFormValues } from "@/lib/validations/landlord";
 import type { AccommodationFormValues } from "@/lib/validations/accomodation";
 import type { PricelistEntryFormValues } from "@/lib/validations/pricelist";
+import { getPricelistByAccommodation } from "@/lib/db/queries/pricelist";
+import { getAccommodationById } from "@/lib/db/queries/accommodations";
 
 const AGENCY_ID = process.env.AGENCY_ID!;
 
@@ -34,6 +37,7 @@ export async function actionCreateLandlord(data: LandlordFormValues) {
     agencyId: AGENCY_ID,
     surname: data.surname,
     name: data.name || "",
+    datumRodjenja: hrDateToIso(data.datumRodjenja),
     oib: data.oib,
     cityId: data.cityId,
     address: data.address,
@@ -69,6 +73,7 @@ export async function actionUpdateLandlord(
   const landlord = await updateLandlord(id, {
     surname: data.surname,
     name: data.name || "",
+    datumRodjenja: hrDateToIso(data.datumRodjenja),
     oib: data.oib,
     cityId: data.cityId,
     address: data.address,
@@ -208,6 +213,10 @@ export async function actionDeleteAccommodation(id: string) {
   revalidatePath("/iznajmljivaci");
 }
 
+export async function actionGetAccommodationById(id: string) {
+  return await getAccommodationById(id);
+}
+
 // --- Pricelist actions ---
 
 export async function actionCreatePricelistEntry(
@@ -244,4 +253,11 @@ export async function actionUpdatePricelistEntry(
 export async function actionDeletePricelistEntry(id: string) {
   await deletePricelistEntry(id);
   revalidatePath("/iznajmljivaci");
+}
+
+export async function actionGetPricelistByAccommodation(
+  accommodationId: string,
+) {
+  const entries = await getPricelistByAccommodation(accommodationId);
+  return entries;
 }

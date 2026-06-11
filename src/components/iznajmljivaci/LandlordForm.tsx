@@ -4,7 +4,8 @@ import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { Save, X } from "lucide-react";
+import { Save, X, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 
 import {
   Form,
@@ -41,9 +42,15 @@ interface LandlordFormProps {
   cities: City[];
   defaultValues?: any;
   landlordId?: string;
+  onSaved?: (
+    landlordId: string,
+    tipProvizije: "P" | "I",
+    cityId: number,
+    address: string,
+  ) => void;
+  submitDisabled?: boolean;
 }
 
-// Labels for display
 const vrstaLabels: Record<string, string> = {
   fizicka_osoba: "Fizička osoba",
   fizicka_osoba_pdv: "Fizička osoba (PDV)",
@@ -62,10 +69,11 @@ export function LandlordForm({
   cities,
   defaultValues,
   landlordId,
+  onSaved,
+  submitDisabled,
 }: LandlordFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
   const isEdit = !!landlordId;
 
   const form = useForm<LandlordFormValues>({
@@ -95,8 +103,6 @@ export function LandlordForm({
   const vrsta = form.watch("vrstaIznajmljivaca");
   const tipProvizije = form.watch("tipProvizije");
 
-  // Derived display rules based on vrsta
-  // Staro — dodaj ovu varijablu uz ostale derived vrijednosti
   const showName = vrsta !== "tvrtka";
   const showDatumRodjenja =
     vrsta === "fizicka_osoba" || vrsta === "fizicka_osoba_pdv";
@@ -113,7 +119,7 @@ export function LandlordForm({
         : "Prezime";
   const nameLabel = vrsta === "obrt" ? "Ime vlasnika" : "Ime";
 
-  // onSubmit
+  const [showPassword, setShowPassword] = useState(false);
 
   function onSubmit(data: LandlordFormValues) {
     startTransition(async () => {
@@ -123,14 +129,16 @@ export function LandlordForm({
           : await actionCreateLandlord(data);
 
         if (result.error) {
-          form.setError("oib", {
-            type: "manual",
-            message: result.error,
-          });
+          form.setError("oib", { type: "manual", message: result.error });
           return;
         }
 
-        router.push("/iznajmljivaci");
+        // NOVO: callback ima prednost nad redirectom (samo za novi iznajmljivač)
+        if (!isEdit && onSaved && result.data?.id) {
+          onSaved(result.data.id, data.tipProvizije);
+        } else {
+          router.push("/iznajmljivaci");
+        }
       } catch (error) {
         console.error("Failed to save landlord", error);
       }
@@ -155,15 +163,12 @@ export function LandlordForm({
                     value={field.value}
                     onValueChange={(val) => {
                       field.onChange(val);
-
-                      // Reset polja ovisno o novoj vrsti
                       if (val === "tvrtka") {
                         form.setValue("name", "");
                         form.setValue("datumRodjenja", "");
                       } else if (val === "obrt") {
                         form.setValue("datumRodjenja", "");
                       }
-
                       if (form.getValues("tipProvizije") === "I") {
                         form.setValue("iznos", 0);
                       }
@@ -271,7 +276,6 @@ export function LandlordForm({
                           {...field}
                           value={field.value ?? ""}
                           onChange={(e) => {
-                            // Auto-insert dots: 01 → 01. → 01.03 → 01.03. → 01.03.1990.
                             let v = e.target.value.replace(/[^\d.]/g, "");
                             const digits = v.replace(/\./g, "");
                             if (digits.length <= 2) {
@@ -308,6 +312,7 @@ export function LandlordForm({
                     <FormControl>
                       <Input
                         className="bg-muted/40 max-w-[160px]"
+                        autoComplete="new-password"
                         maxLength={11}
                         {...field}
                       />
@@ -348,6 +353,9 @@ export function LandlordForm({
                         className="bg-muted/40"
                         autoComplete="new-password"
                         {...field}
+                        onChange={(e) =>
+                          field.onChange(capitalizeWords(e.target.value))
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -449,7 +457,6 @@ export function LandlordForm({
                 )}
               />
 
-              {/* Tip provizije */}
               <FormField
                 control={form.control}
                 name="tipProvizije"
@@ -494,7 +501,6 @@ export function LandlordForm({
                 )}
               />
 
-              {/* Iznos provizije */}
               <FormField
                 control={form.control}
                 name="iznos"
@@ -533,7 +539,6 @@ export function LandlordForm({
                 )}
               />
 
-              {/* Prioritetan */}
               <FormField
                 control={form.control}
                 name="prioritetan"
@@ -560,7 +565,6 @@ export function LandlordForm({
 
               <Separator className="my-2" />
 
-              {/* eVisitor */}
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                 eVisitor podaci
               </p>
@@ -590,15 +594,29 @@ export function LandlordForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lozinka</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        className="bg-muted/40"
-                        autoComplete="new-password"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          className="bg-muted/40 pr-9"
+                          autoComplete="new-password"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <button
+                        type="button"
+                        className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowPassword((v) => !v)}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -618,7 +636,7 @@ export function LandlordForm({
             <X className="h-4 w-4 mr-1" />
             Odustani
           </Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending || !!submitDisabled}>
             <Save className="h-4 w-4 mr-1" />
             {isPending
               ? "Pohranjivanje..."
