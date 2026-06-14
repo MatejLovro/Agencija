@@ -431,6 +431,49 @@ u search polje.
 
 ---
 
+## NOVE TABLICE U BAZI (Kalendar rezervacija)
+
+Dodane su sljedeće tablice i sheme:
+
+### `lib/db/schema/guests.ts`
+Tablica gostiju s podacima potrebnim za eVisitor prijavu (spol, datum rođenja, mjesto i država rođenja, tip i broj dokumenta, državljanstvo, OIB).
+
+### `lib/db/schema/partners.ts`
+Tablica poslovnih partnera (agencije koje šalju goste). Sadrži naziv, OIB, adresu, IBAN, PDV status i kontakt osobu.
+
+### `lib/db/schema/reservations.ts`
+Tablica rezervacija. Ključne napomene:
+- `redni_broj` je `bigserial` — automatski inkrementalni broj koji se prikazuje u kalendaru (npr. "700")
+- Gost se upisuje samo kao tekstualna polja (`guest_name`, `guest_surname`) — ne veže se na tablicu gostiju jer rezervacija još nije potvrđena
+- `avans_percent` i `avans_amount` su nullable — nisu uvijek potrebni
+- `rezervation_valid` je nullable — walk-in gosti nemaju rok valjanosti
+- Status: `nepotvrdjena` | `potvrdjena`
+
+### `lib/db/schema/stays.ts`
+Tablica prijava (boravaka) i stavki prijave. Dvije tablice u jednoj datoteci:
+
+**`stays`** — nositelj prijave:
+- `redni_broj` je `bigserial` — prikazuje se u kalendaru s prefiksom "P" (npr. "P699")
+- `reservation_id` je nullable — walk-in gost nema rezervaciju
+- `guest_id` obavezan — kod prijave gost mora biti upisan u tablicu gostiju
+- `fakturirana` — je li račun gostu već izdan
+- `racun_u_ime_iznajmljivaca` — izdaje li agencija račun u ime iznajmljivača
+
+**`stays_stavke`** — jedna stavka = jedna osoba koja boravi:
+- Datumi mogu biti različiti od datuma na `stays` (gosti dolaze/odlaze u različito vrijeme)
+- `category` enum — eVisitor kategorije boravka
+- `date_of_resid_permit` nullable — datum isteka dozvole boravka (strani državljani)
+
+---
+
+## KONVENCIJE ZA KALENDAR
+
+- Rezervacije se prikazuju **žutom bojom**, oznaka: redni broj (npr. "700")
+- Prijave se prikazuju **zelenom bojom**, oznaka: "P" + redni broj (npr. "P699")
+- Istekle rezervacije prikazuju se **drugačijom bojom** — djelatnik ručno odlučuje što dalje
+- **Dan preklapanja** (narančasta) — prezentacijski podatak, dan kada jedna rezervacija/prijava završava a druga počinje; računa se u aplikaciji, nema polja u bazi
+
+
 ## NAPOMENE
 
 - Projekt se razvija na dva računala — Neon PostgreSQL omogućuje dijeljenu bazu

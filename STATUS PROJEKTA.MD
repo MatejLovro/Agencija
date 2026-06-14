@@ -117,7 +117,106 @@
 ## Sljedeći korak
 
 - Kalendar rezervacija u stilu Gantt dijagrama:
-  1. stupac: iznajmljivač
-  2. stupac: apartman
-     ostali stupci: dani (tjedan ili mjesec prikaz)
-     rezervacije kao blokovi koji se protežu kroz dane
+  
+## KALENDAR REZERVACIJA — Status: u izradi
+
+### Što je napravljeno
+- Definirane i kreirane sve tablice u Neon bazi: `guests`, `partners`, `reservations`, `stays`, `stays_stavke`
+- Kreirane Drizzle sheme: `guests.ts`, `partners.ts`, `reservations.ts`, `stays.ts`
+- SQL migracija uspješno izvršena na Neon bazi
+
+### Što slijedi
+- Implementacija Drizzle query sloja za kalendar
+- Implementacija Server Action za dohvat podataka kalendara
+- Implementacija custom Gantt komponente
+
+---
+
+## ARHITEKTURA GANTT KOMPONENTE
+
+### Koncept
+Custom React komponenta — bez vanjskih biblioteka. Koristi HTML tablicu s CSS `position: sticky` za fiksiranje lijevih stupaca pri horizontalnom scrollu.
+
+### Struktura prikaza
+```
+┌─────────────────┬────────────┬───────┬───────┬───────┐
+│ IZNAJMLJIVAČI   │ KAPACITETI │ 02.06 │ 03.06 │ 04.06 │
+├─────────────────┼────────────┼───────┼───────┼───────┤
+│ AGIĆ ZRINKA     │            │       │       │       │
+│                 │ ST22-6     │       │       │       │
+│                 │ AP22-5     │       │       │       │
+├─────────────────┼────────────┼───────┼───────┼───────┤
+│ BATINIĆ IVAN    │            │       │       │       │
+│                 │ S2-6       │ P699  │ P699  │       │
+└─────────────────┴────────────┴───────┴───────┴───────┘
+```
+- Svaki red = jedan apartman
+- Iznajmljivač je "header red" bez ćelija za datume
+- Lijeva dva stupca su sticky (ne scrollaju)
+- Datumski stupci scrollaju horizontalno
+
+### TypeScript tipovi komponente
+```typescript
+type KalendarDan = {
+  datum: string                              // "2026-06-02"
+  tip: "rezervacija" | "prijava" | "preklapanje" | null
+  redniBroj: number | null
+  boja: string
+}
+
+type KalendarApartman = {
+  accommodationId: string
+  naziv: string
+  dani: KalendarDan[]                        // jedan element po danu u rasponu
+}
+
+type KalendarIznajmljivac = {
+  landlordId: string
+  ime: string
+  apartmani: KalendarApartman[]
+}
+
+type KalendarProps = {
+  iznajmljivaci: KalendarIznajmljivac[]
+  datumOd: string
+  datumDo: string
+}
+```
+
+### Tijek podataka
+```
+Korisnik unosi filtere (grad, datumi, sobe, oprema...)
+        ↓
+Server Action: fetchKalendarData(filtri)
+        ↓
+Query spaja: accommodations + landlords + reservations + stays
+        ↓
+Rezultat se transformira u KalendarIznajmljivac[]
+        ↓
+Komponenta <KalendarGantt> crta tablicu
+```
+
+### Ključno načelo
+Server Action vraća podatke već transformirane u oblik koji komponenta direktno konzumira. Komponenta ne radi nikakve izračune — samo crta što dobije.
+
+### Boje u kalendaru
+| Tip                     | Boja                   | Oznaka                     |
+|---                      |---                     |---                         |
+| Prijava                 | Zelena                 | P + redni_broj (npr. P699) |
+| Rezervacija potvrđena   | Žuta                   | redni_broj (npr. 700)      |
+| Rezervacija nepotvrđena | Drugačija nijansa žute | redni_broj                 |
+| Rezervacija istekla     | Crvena / siva          | redni_broj                 |
+| Dan preklapanja         | Narančasta             | —                          |
+
+### Forma za filtere
+Filteri koji će biti implementirani:
+- Grad (combobox)
+- Iznajmljivač (combobox)
+- Od datuma / Do datuma
+- Broj soba, broj kreveta
+- Samo prioritetni (checkbox)
+- Oprema: klima, parking, terasa, internet, kućni ljubimac, pogled na more itd.
+- Tip rezervacije: sve / samo potvrđene / samo nepotvrđene
+
+### Upravljačka dugmad
+Ispod dijagrama — za dodavanje rezervacija i prijava direktno iz kalendara. Implementacija u kasnijoj fazi.

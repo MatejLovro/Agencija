@@ -37,7 +37,6 @@ src/
 ├── app/                        # Next.js App Router stranice i rute
 │   ├── (auth)/                 # Auth stranice (login i sl.)
 │   ├── (dashboard)/            # Zaštićene stranice aplikacije
-│   │   ├── rezervacije/
 │   │   ├── apartmani/
 │   │   ├── iznajmljivaci/
 │   │   ├── gosti/

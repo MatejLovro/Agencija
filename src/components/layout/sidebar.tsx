@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/rezervacije", icon: CalendarDays, label: "Rezervacije" },
+  { href: "/kalendar", icon: CalendarDays, label: "Kalendar" },
   { href: "/prijave", icon: ClipboardList, label: "Pregled prijava" },
   { href: "/racuni-prijave", icon: FileText, label: "Računi iz prijave" },
   { href: "/racuni", icon: Receipt, label: "Računi" },
