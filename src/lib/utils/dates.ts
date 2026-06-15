@@ -54,3 +54,15 @@ export function hrDateToIso(value: string | null | undefined): string | null {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+// Generira niz datuma između dva ISO datuma (uključivo)
+export function generateDates(from: string, to: string): string[] {
+  const dates: string[] = [];
+  const cur = new Date(from);
+  const end = new Date(to);
+  while (cur <= end) {
+    dates.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}

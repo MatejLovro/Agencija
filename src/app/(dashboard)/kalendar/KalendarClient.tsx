@@ -1,42 +1,96 @@
 // src/app/(dashboard)/kalendar/KalendarClient.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import KalendarFiltriForm from "@/components/kalendar/KalendarFiltriForm";
 import KalendarGantt from "@/components/kalendar/KalendarGantt";
-import { KalendarFiltri, KalendarIznajmljivac } from "@/types/kalendar";
-import { MOCK_IZNAJMLJIVACI, generateDates } from "@/lib/mock/kalendarMock";
+import { KalendarFiltri, KalendarIznajmljivac } from "@/types/kalendar.types";
+import { actionFetchKalendarData } from "@/lib/actions/kalendar";
+import { generateDates } from "@/lib/utils/dates";
 
-// Početni raspon: tekući mjesec
-const today = new Date();
-const DEFAULT_OD = new Date(today.getFullYear(), today.getMonth(), 1)
-  .toISOString()
-  .slice(0, 10);
-const DEFAULT_DO = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-  .toISOString()
-  .slice(0, 10);
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function computeDefaultRange(): { od: string; do: string } {
+  const daysBefore = parseInt(
+    process.env.NEXT_PUBLIC_CALENDAR_DAYS_BEFORE ?? "6",
+    10,
+  );
+  const daysAfter = parseInt(
+    process.env.NEXT_PUBLIC_CALENDAR_DAYS_AFTER ?? "45",
+    10,
+  );
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const od = new Date(today);
+  od.setDate(today.getDate() - daysBefore);
+  const do_ = new Date(today);
+  do_.setDate(today.getDate() + daysAfter);
+  return {
+    od: od.toISOString().slice(0, 10),
+    do: do_.toISOString().slice(0, 10),
+  };
+}
+
+function getTodayIso(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
+}
+
+// ─── Komponenta ──────────────────────────────────────────────────────────────
 
 export default function KalendarClient() {
-  const [datumOd, setDatumOd] = useState(DEFAULT_OD);
-  const [datumDo, setDatumDo] = useState(DEFAULT_DO);
+  const defaultRange = useMemo(() => computeDefaultRange(), []);
+  const today = useMemo(() => getTodayIso(), []);
+
+  const [datumOd, setDatumOd] = useState(defaultRange.od);
+  const [datumDo, setDatumDo] = useState(defaultRange.do);
   const [iznajmljivaci, setIznajmljivaci] = useState<KalendarIznajmljivac[]>(
-    MOCK_IZNAJMLJIVACI
+    [],
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const datumi = useMemo(() => generateDates(datumOd, datumDo), [datumOd, datumDo]);
+  const datumi = useMemo(
+    () => generateDates(datumOd, datumDo),
+    [datumOd, datumDo],
+  );
 
-  function handleSearch(filtri: KalendarFiltri) {
+  async function handleSearch(filtri: KalendarFiltri) {
     setIsLoading(true);
+    setError(null);
     setDatumOd(filtri.datumOd);
     setDatumDo(filtri.datumDo);
-
-    // Za sada koristimo mock podatke — ovdje će ići Server Action
-    setTimeout(() => {
-      setIznajmljivaci(MOCK_IZNAJMLJIVACI);
+    try {
+      const data = await actionFetchKalendarData(filtri);
+      setIznajmljivaci(data);
+    } catch (e) {
+      setError("Greška pri učitavanju podataka.");
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   }
+
+  // Inicijalni load s defaultnim filterima
+  useEffect(() => {
+    handleSearch({
+      gradId: null,
+      landlordId: null,
+      datumOd: defaultRange.od,
+      datumDo: defaultRange.do,
+      brojSoba: null,
+      brojKreveta: null,
+      brojPomocnihLezajeva: null,
+      samoPotvrdjene: false,
+      samoNepotvrdjene: false,
+      imaKlima: false,
+      imaParking: false,
+      imaWifi: false,
+      kucniLjubimac: false,
+      pogledNaMore: false,
+      samoPrioritetan: false,
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
@@ -51,7 +105,12 @@ export default function KalendarClient() {
       </div>
 
       {/* Forma filtera */}
-      <KalendarFiltriForm onSearch={handleSearch} isLoading={isLoading} />
+      <KalendarFiltriForm
+        onSearch={handleSearch}
+        isLoading={isLoading}
+        defaultDatumOd={datumOd}
+        defaultDatumDo={datumDo}
+      />
 
       {/* Gantt tablica */}
       <div className="flex-1 overflow-hidden bg-white relative">
@@ -60,7 +119,18 @@ export default function KalendarClient() {
             <div className="text-sm text-slate-500">Učitavanje...</div>
           </div>
         )}
-        <KalendarGantt iznajmljivaci={iznajmljivaci} datumi={datumi} />
+        {error && !isLoading && (
+          <div className="flex items-center justify-center h-32 text-sm text-red-500">
+            {error}
+          </div>
+        )}
+        {!error && (
+          <KalendarGantt
+            iznajmljivaci={iznajmljivaci}
+            datumi={datumi}
+            today={today}
+          />
+        )}
       </div>
     </div>
   );

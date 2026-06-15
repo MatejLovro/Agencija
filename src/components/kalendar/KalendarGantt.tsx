@@ -30,8 +30,10 @@ type CellStyle = {
   border: string;
 };
 
-function getCellStyle(dan: KalendarDan): CellStyle {
+function getCellStyle(dan: KalendarDan, isToday: boolean, isWeekendDay: boolean): CellStyle {
   if (!dan.tip) {
+    if (isToday) return { bg: "bg-emerald-50", text: "text-emerald-800", border: "border-emerald-200" };
+    if (isWeekendDay) return { bg: "bg-sky-100", text: "text-sky-800", border: "border-sky-200" };
     return { bg: "bg-sky-50", text: "text-sky-800", border: "border-sky-100" };
   }
   switch (dan.tip) {
@@ -50,19 +52,23 @@ function getCellStyle(dan: KalendarDan): CellStyle {
 
 // ─── Ćelija s danom ─────────────────────────────────────────────────────────
 
-function DanCelija({ dan, isWeekendDay }: { dan: KalendarDan; isWeekendDay: boolean }) {
-  const style = getCellStyle(dan);
-  const isEmpty = !dan.tip;
+function DanCelija({
+  dan,
+  isWeekendDay,
+  isToday,
+}: {
+  dan: KalendarDan;
+  isWeekendDay: boolean;
+  isToday: boolean;
+}) {
+  const style = getCellStyle(dan, isToday, isWeekendDay);
 
   return (
     <td
       className={[
         "relative border-r border-b h-8 min-w-[38px] max-w-[38px] w-[38px] text-center align-middle select-none cursor-default",
-        isEmpty
-          ? isWeekendDay
-            ? "bg-sky-100 border-sky-200"
-            : `${style.bg} ${style.border}`
-          : `${style.bg} ${style.border}`,
+        style.bg,
+        style.border,
       ].join(" ")}
     >
       {dan.tip && (
@@ -90,6 +96,7 @@ function Legenda() {
     { label: "Rezervacija (nepotvrđena)", bg: "bg-yellow-100 border border-yellow-300" },
     { label: "Prijava", bg: "bg-emerald-500" },
     { label: "Dan preklapanja", bg: "bg-orange-400" },
+    { label: "Danas", bg: "bg-emerald-50 border border-emerald-200" },
   ];
   return (
     <div className="flex items-center gap-4 px-4 py-2 border-b border-slate-200 bg-white text-xs text-slate-600">
@@ -112,9 +119,10 @@ function Legenda() {
 interface KalendarGanttProps {
   iznajmljivaci: KalendarIznajmljivac[];
   datumi: string[]; // niz ISO datuma u rasponu
+  today: string;    // ISO datum današnjeg dana, npr. "2026-06-15"
 }
 
-export default function KalendarGantt({ iznajmljivaci, datumi }: KalendarGanttProps) {
+export default function KalendarGantt({ iznajmljivaci, datumi, today }: KalendarGanttProps) {
   if (iznajmljivaci.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
@@ -132,7 +140,6 @@ export default function KalendarGantt({ iznajmljivaci, datumi }: KalendarGanttPr
         <table className="border-collapse text-xs" style={{ tableLayout: "fixed" }}>
           {/* Header */}
           <thead>
-            {/* Red s danima u tjednu */}
             <tr>
               <th
                 className="sticky left-0 z-30 bg-slate-700 border-r border-b border-slate-600 text-slate-300 font-medium text-left px-2 py-1 min-w-[160px] max-w-[160px] w-[160px]"
@@ -144,24 +151,30 @@ export default function KalendarGantt({ iznajmljivaci, datumi }: KalendarGanttPr
               >
                 KAPACITET
               </th>
-              {datumi.map((datum) => (
-                <th
-                  key={datum}
-                  className={[
-                    "border-r border-b min-w-[38px] max-w-[38px] w-[38px] text-center font-normal py-0.5",
-                    isWeekend(datum)
-                      ? "bg-slate-600 text-slate-200"
-                      : "bg-slate-700 text-slate-300",
-                  ].join(" ")}
-                >
-                  <div className="text-[9px] leading-tight text-slate-400">
-                    {getDayOfWeek(datum)}
-                  </div>
-                  <div className="text-[10px] leading-tight font-semibold">
-                    {formatDatumHeader(datum)}
-                  </div>
-                </th>
-              ))}
+              {datumi.map((datum) => {
+                const isToday = datum === today;
+                const isWeekendDay = isWeekend(datum);
+                return (
+                  <th
+                    key={datum}
+                    className={[
+                      "border-r border-b min-w-[38px] max-w-[38px] w-[38px] text-center font-normal py-0.5",
+                      isToday
+                        ? "bg-emerald-600 text-white"
+                        : isWeekendDay
+                        ? "bg-slate-600 text-slate-200"
+                        : "bg-slate-700 text-slate-300",
+                    ].join(" ")}
+                  >
+                    <div className={`text-[9px] leading-tight ${isToday ? "text-emerald-100" : "text-slate-400"}`}>
+                      {getDayOfWeek(datum)}
+                    </div>
+                    <div className="text-[10px] leading-tight font-semibold">
+                      {formatDatumHeader(datum)}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
 
@@ -173,22 +186,24 @@ export default function KalendarGantt({ iznajmljivaci, datumi }: KalendarGanttPr
                 <tr key={`iznajmljivac-${iznajmljivac.landlordId}`} className="bg-slate-100">
                   <td
                     className="sticky left-0 z-20 bg-slate-100 border-r border-b border-slate-300 font-semibold text-slate-700 px-2 py-1 min-w-[160px] max-w-[160px] w-[160px] uppercase tracking-wide text-[11px]"
-                    colSpan={1}
                   >
                     {iznajmljivac.ime}
                   </td>
                   <td
                     className="sticky left-[160px] z-20 bg-slate-100 border-r border-b border-slate-300 min-w-[80px] max-w-[80px] w-[80px]"
                   />
-                  {datumi.map((datum) => (
-                    <td
-                      key={datum}
-                      className={[
-                        "border-r border-b h-7 min-w-[38px] max-w-[38px] w-[38px]",
-                        isWeekend(datum) ? "bg-slate-200" : "bg-slate-100",
-                      ].join(" ")}
-                    />
-                  ))}
+                  {datumi.map((datum) => {
+                    const isToday = datum === today;
+                    return (
+                      <td
+                        key={datum}
+                        className={[
+                          "border-r border-b h-7 min-w-[38px] max-w-[38px] w-[38px]",
+                          isToday ? "bg-emerald-100" : isWeekend(datum) ? "bg-slate-200" : "bg-slate-100",
+                        ].join(" ")}
+                      />
+                    );
+                  })}
                 </tr>
 
                 {/* Redovi apartmana */}
@@ -204,6 +219,8 @@ export default function KalendarGantt({ iznajmljivaci, datumi }: KalendarGanttPr
 
                     {/* Dani */}
                     {datumi.map((datum) => {
+                      const isToday = datum === today;
+                      const isWeekendDay = isWeekend(datum);
                       const dan = apartman.dani.find((d) => d.datum === datum);
                       if (!dan) {
                         return (
@@ -211,7 +228,7 @@ export default function KalendarGantt({ iznajmljivaci, datumi }: KalendarGanttPr
                             key={datum}
                             className={[
                               "border-r border-b h-8 min-w-[38px] max-w-[38px] w-[38px]",
-                              isWeekend(datum) ? "bg-sky-100" : "bg-sky-50",
+                              isToday ? "bg-emerald-50 border-emerald-200" : isWeekendDay ? "bg-sky-100" : "bg-sky-50",
                             ].join(" ")}
                           />
                         );
@@ -220,7 +237,8 @@ export default function KalendarGantt({ iznajmljivaci, datumi }: KalendarGanttPr
                         <DanCelija
                           key={datum}
                           dan={dan}
-                          isWeekendDay={isWeekend(datum)}
+                          isWeekendDay={isWeekendDay}
+                          isToday={isToday}
                         />
                       );
                     })}

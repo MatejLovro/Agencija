@@ -1,7 +1,7 @@
-// src/components/kalendar/KalendarFiltri.tsx
+// src/components/kalendar/KalendarFiltriForm.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,17 +13,18 @@ import { KalendarFiltri } from "@/types/kalendar";
 interface KalendarFiltriFormProps {
   onSearch: (filtri: KalendarFiltri) => void;
   isLoading?: boolean;
+  defaultDatumOd: string; // ISO string iz parent komponente
+  defaultDatumDo: string; // ISO string iz parent komponente
 }
 
-// Formatira Date u HR string za input "dd.mm.gggg."
-function dateToHr(d: Date): string {
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
+// ─── Date helpers ─────────────────────────────────────────────────────────
+
+function isoToHr(iso: string): string {
+  if (!iso || iso.length < 10) return "";
+  const [yyyy, mm, dd] = iso.split("-");
   return `${dd}.${mm}.${yyyy}.`;
 }
 
-// Parsira HR string "dd.mm.gggg." u ISO string
 function hrToIso(hr: string): string {
   const clean = hr.replace(/\./g, "");
   if (clean.length !== 8) return "";
@@ -33,7 +34,6 @@ function hrToIso(hr: string): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// Auto-format HR datuma dok korisnik tipka
 function autoFormatHrDate(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
   let result = "";
@@ -45,16 +45,16 @@ function autoFormatHrDate(raw: string): string {
   return result;
 }
 
-const today = new Date();
-const defaultOd = new Date(today.getFullYear(), today.getMonth(), 1);
-const defaultDo = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+// ─── Komponenta ──────────────────────────────────────────────────────────────
 
 export default function KalendarFiltriForm({
   onSearch,
   isLoading = false,
+  defaultDatumOd,
+  defaultDatumDo,
 }: KalendarFiltriFormProps) {
-  const [datumOd, setDatumOd] = useState(dateToHr(defaultOd));
-  const [datumDo, setDatumDo] = useState(dateToHr(defaultDo));
+  const [datumOd, setDatumOd] = useState(isoToHr(defaultDatumOd));
+  const [datumDo, setDatumDo] = useState(isoToHr(defaultDatumDo));
   const [brojSoba, setBrojSoba] = useState("");
   const [brojKreveta, setBrojKreveta] = useState("");
   const [brojPomLezajeva, setBrojPomLezajeva] = useState("");
@@ -65,6 +65,15 @@ export default function KalendarFiltriForm({
   const [kucniLjubimac, setKucniLjubimac] = useState(false);
   const [pogledNaMore, setPogledNaMore] = useState(false);
   const [samoPrioritetan, setSamoPrioritetan] = useState(false);
+
+  // Sinkroniziramo s parent datumima kad se promijene (npr. inicijalni load)
+  useEffect(() => {
+    setDatumOd(isoToHr(defaultDatumOd));
+  }, [defaultDatumOd]);
+
+  useEffect(() => {
+    setDatumDo(isoToHr(defaultDatumDo));
+  }, [defaultDatumDo]);
 
   function handleSearch() {
     const isoOd = hrToIso(datumOd);
@@ -92,7 +101,6 @@ export default function KalendarFiltriForm({
 
   return (
     <div className="bg-white border-b border-slate-200 px-4 py-3">
-      {/* Glavni red filtera */}
       <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
 
         {/* Datumi */}
@@ -119,7 +127,6 @@ export default function KalendarFiltriForm({
           </div>
         </div>
 
-        {/* Separator */}
         <div className="h-8 w-px bg-slate-200 hidden sm:block" />
 
         {/* Kapaciteti */}
@@ -156,10 +163,9 @@ export default function KalendarFiltriForm({
           </div>
         </div>
 
-        {/* Separator */}
         <div className="h-8 w-px bg-slate-200 hidden sm:block" />
 
-        {/* Amenities checkboxovi */}
+        {/* Amenities */}
         <div className="flex items-center gap-4">
           {[
             { label: "Klima", value: imaKlima, set: setImaKlima },
@@ -182,7 +188,6 @@ export default function KalendarFiltriForm({
           ))}
         </div>
 
-        {/* Separator */}
         <div className="h-8 w-px bg-slate-200 hidden sm:block" />
 
         {/* Tip rezervacije */}
@@ -208,7 +213,6 @@ export default function KalendarFiltriForm({
           </RadioGroup>
         </div>
 
-        {/* Separator */}
         <div className="h-8 w-px bg-slate-200 hidden sm:block" />
 
         {/* Prioritetni */}
@@ -224,7 +228,7 @@ export default function KalendarFiltriForm({
           </Label>
         </div>
 
-        {/* Dugme Traži — push to the right on large screens */}
+        {/* Dugme Traži */}
         <div className="flex-1 flex justify-end">
           <Button
             onClick={handleSearch}
