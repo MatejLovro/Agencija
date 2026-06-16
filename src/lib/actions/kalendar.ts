@@ -51,6 +51,16 @@ type LandlordEntry = {
   apartmaniMap: Map<string, ApartmanEntry>;
 };
 
+// Jedinstveni "događaj" — rezervacija ili stay, svedeno na isti oblik
+// radi provjere preklapanja kraja/početka
+type Dogadjaj = {
+  id: string;
+  od: string;
+  do: string;
+  broj: number;
+  vrsta: "rezervacija_potvrdjena" | "rezervacija_nepotvrdjena" | "prijava";
+};
+
 export async function actionFetchKalendarData(
   filtri: KalendarFiltri,
 ): Promise<KalendarIznajmljivac[]> {
@@ -118,13 +128,40 @@ export async function actionFetchKalendarData(
     const apartmani: KalendarApartman[] = [];
 
     for (const aptEntry of landlordEntry.apartmaniMap.values()) {
-      const dani: KalendarDan[] = datumi.map((datum) => {
-        const stay = aptEntry.stays.find((s) => isInRange(datum, s.od, s.do));
-        const rez = aptEntry.rezervacije.find((r) =>
-          isInRange(datum, r.od, r.do),
-        );
+      // Svedi rezervacije i stayeve na jedinstvenu listu događaja
+      const dogadjaji: Dogadjaj[] = [
+        ...aptEntry.rezervacije.map((r) => ({
+          id: r.id,
+          od: r.od,
+          do: r.do,
+          broj: r.broj,
+          vrsta:
+            r.status === "potvrdjena"
+              ? ("rezervacija_potvrdjena" as const)
+              : ("rezervacija_nepotvrdjena" as const),
+        })),
+        ...aptEntry.stays.map((s) => ({
+          id: s.id,
+          od: s.od,
+          do: s.do,
+          broj: s.broj,
+          vrsta: "prijava" as const,
+        })),
+      ];
 
-        if (stay && rez) {
+      // Skup datuma koji su "dan preklapanja": kraj jednog događaja
+      // je istovremeno početak drugog (različiti id)
+      const daniPreklapanja = new Set<string>();
+      for (const a of dogadjaji) {
+        for (const b of dogadjaji) {
+          if (a.id !== b.id && a.do === b.od) {
+            daniPreklapanja.add(a.do);
+          }
+        }
+      }
+
+      const dani: KalendarDan[] = datumi.map((datum) => {
+        if (daniPreklapanja.has(datum)) {
           return {
             datum,
             tip: "preklapanje",
@@ -133,6 +170,7 @@ export async function actionFetchKalendarData(
           };
         }
 
+        const stay = aptEntry.stays.find((s) => isInRange(datum, s.od, s.do));
         if (stay) {
           return {
             datum,
@@ -142,6 +180,9 @@ export async function actionFetchKalendarData(
           };
         }
 
+        const rez = aptEntry.rezervacije.find((r) =>
+          isInRange(datum, r.od, r.do),
+        );
         if (rez) {
           return {
             datum,
