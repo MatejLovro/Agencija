@@ -436,13 +436,17 @@ u search polje.
 Dodane su sljedeće tablice i sheme:
 
 ### `lib/db/schema/guests.ts`
+
 Tablica gostiju s podacima potrebnim za eVisitor prijavu (spol, datum rođenja, mjesto i država rođenja, tip i broj dokumenta, državljanstvo, OIB).
 
 ### `lib/db/schema/partners.ts`
+
 Tablica poslovnih partnera (agencije koje šalju goste). Sadrži naziv, OIB, adresu, IBAN, PDV status i kontakt osobu.
 
 ### `lib/db/schema/reservations.ts`
+
 Tablica rezervacija. Ključne napomene:
+
 - `redni_broj` je `bigserial` — automatski inkrementalni broj koji se prikazuje u kalendaru (npr. "700")
 - Gost se upisuje samo kao tekstualna polja (`guest_name`, `guest_surname`) — ne veže se na tablicu gostiju jer rezervacija još nije potvrđena
 - `avans_percent` i `avans_amount` su nullable — nisu uvijek potrebni
@@ -450,9 +454,11 @@ Tablica rezervacija. Ključne napomene:
 - Status: `nepotvrdjena` | `potvrdjena`
 
 ### `lib/db/schema/stays.ts`
+
 Tablica prijava (boravaka) i stavki prijave. Dvije tablice u jednoj datoteci:
 
 **`stays`** — nositelj prijave:
+
 - `redni_broj` je `bigserial` — prikazuje se u kalendaru s prefiksom "P" (npr. "P699")
 - `reservation_id` je nullable — walk-in gost nema rezervaciju
 - `guest_id` obavezan — kod prijave gost mora biti upisan u tablicu gostiju
@@ -460,6 +466,7 @@ Tablica prijava (boravaka) i stavki prijave. Dvije tablice u jednoj datoteci:
 - `racun_u_ime_iznajmljivaca` — izdaje li agencija račun u ime iznajmljivača
 
 **`stays_stavke`** — jedna stavka = jedna osoba koja boravi:
+
 - Datumi mogu biti različiti od datuma na `stays` (gosti dolaze/odlaze u različito vrijeme)
 - `category` enum — eVisitor kategorije boravka
 - `date_of_resid_permit` nullable — datum isteka dozvole boravka (strani državljani)
@@ -473,6 +480,33 @@ Tablica prijava (boravaka) i stavki prijave. Dvije tablice u jednoj datoteci:
 - Istekle rezervacije prikazuju se **drugačijom bojom** — djelatnik ručno odlučuje što dalje
 - **Dan preklapanja** (narančasta) — prezentacijski podatak, dan kada jedna rezervacija/prijava završava a druga počinje; računa se u aplikaciji, nema polja u bazi
 
+## PRAVILA PREKLAPANJA — PRIJAVE I REZERVACIJE
+
+### Prijave (tablica `stays`)
+
+- Prijava znači da je apartman zauzet sve dok se prijava ne zatvori (odjava).
+- Sljedeća prijava u istom apartmanu moguća je samo od zadnjeg dana prethodne prijave (gost se odjavljuje prijepodne, novi gost se prijavljuje popodne istog dana).
+- Zaključak: kod prijava preklapanje može trajati **najviše jedan dan** — onaj na koji se odjava i nova prijava poklapaju. Ovo se provjerava i validira prilikom unosa prijave (implementacija slijedi u modulu unosa).
+
+### Rezervacije (tablica `reservations`)
+
+- Za jedan apartman moguće je napraviti više rezervacija za isti period ili periode koji se preklapaju.
+- Rezervacija je neobvezujuća — agencija odlučuje koju će potvrditi (obično onu koja je prva uplaćena).
+- Zaključak: kod rezervacija preklapanje **može trajati više dana** i to je normalno, očekivano stanje (više zainteresiranih gostiju za isti termin), ne greška.
+
+### Prikaz preklapanja u kalendaru
+
+- Dan preklapanja = dan u kojem su **2 ili više različitih događaja** (rezervacija i/ili prijava) istovremeno aktivni u istom apartmanu.
+- Uvijek se prikazuje **narančasta boja, bez rednog broja**, bez obzira radi li se o:
+  - rubnom slučaju kod prijava (checkout = checkin, jedan dan), ili
+  - preklapanju više rezervacija kroz više dana.
+- Boja preklapanja je uvijek ista (narančasta) — ne razlikuje se po broju ili vrsti preklapajućih događaja, kako bi korisnik odmah prepoznao "ovdje se nešto preklapa" bez dodatnog tumačenja boja.
+- Planirano (kasnija faza): hover preko dana preklapanja prikazuje listu svih preklapajućih rezervacija/prijava s rednim brojevima.
+- Preklapanje stay-a i rezervacije u praksi se ne smije dogoditi (rezervacija je moguća samo na zadnji dan postojeće prijave) — ako se dogodi, to je rubni slučaj koji se rješava u modulu unosa prijava/rezervacija, ne u prikazu kalendara.
+
+### Algoritam (implementirano u `actionFetchKalendarData`)
+
+Za svaki dan u prikazanom rasponu broje se svi aktivni događaji (rezervacije + prijave) u apartmanu. Ako je broj aktivnih događaja ≥ 2, dan se oznacava kao "preklapanje" (`tip: "preklapanje"`), čime se prirodno pokrivaju oba gornja slučaja bez posebne logike za rubne datume.
 
 ## NAPOMENE
 

@@ -52,7 +52,6 @@ type LandlordEntry = {
 };
 
 // Jedinstveni "događaj" — rezervacija ili stay, svedeno na isti oblik
-// radi provjere preklapanja kraja/početka
 type Dogadjaj = {
   id: string;
   od: string;
@@ -149,14 +148,14 @@ export async function actionFetchKalendarData(
         })),
       ];
 
-      // Skup datuma koji su "dan preklapanja": kraj jednog događaja
-      // je istovremeno početak drugog (različiti id)
+      // Dan preklapanja = dan u kojem se preklapaju 2+ različita događaja.
+      // Pokriva i rubni slučaj (checkout = checkin) i preklapanje rezervacija
+      // kroz više dana (konkurentske rezervacije za isti termin).
       const daniPreklapanja = new Set<string>();
-      for (const a of dogadjaji) {
-        for (const b of dogadjaji) {
-          if (a.id !== b.id && a.do === b.od) {
-            daniPreklapanja.add(a.do);
-          }
+      for (const datum of datumi) {
+        const aktivni = dogadjaji.filter((d) => isInRange(datum, d.od, d.do));
+        if (aktivni.length >= 2) {
+          daniPreklapanja.add(datum);
         }
       }
 
