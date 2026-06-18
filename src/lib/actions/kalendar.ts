@@ -6,7 +6,16 @@ import {
   KalendarIznajmljivac,
   KalendarApartman,
   KalendarDan,
-} from "@/types/kalendar";
+} from "@/types/kalendar.types";
+
+import {
+  checkPostojiPrijavaUPeriodu,
+  checkPostojiPotvrdjenaRezervacijaUPeriodu,
+} from "@/lib/utils/kalendarValidacija";
+
+export type ProvjeraRezervacijeRezultat =
+  | { dozvoljeno: true }
+  | { dozvoljeno: false; poruka: string };
 
 function generateDates(od: string, do_: string): string[] {
   const dates: string[] = [];
@@ -212,4 +221,33 @@ export async function actionFetchKalendarData(
   }
 
   return rezultat;
+}
+
+export async function actionProvjeriMoguceRezerviranje(
+  accommodationId: string,
+  od: string,
+  do_: string,
+): Promise<ProvjeraRezervacijeRezultat> {
+  const postojiPrijava = await checkPostojiPrijavaUPeriodu(
+    accommodationId,
+    od,
+    do_,
+  );
+  if (postojiPrijava) {
+    return {
+      dozvoljeno: false,
+      poruka: "Za izabrani period postoji evidentirana prijava",
+    };
+  }
+
+  const postojiPotvrdjenaRezervacija =
+    await checkPostojiPotvrdjenaRezervacijaUPeriodu(accommodationId, od, do_);
+  if (postojiPotvrdjenaRezervacija) {
+    return {
+      dozvoljeno: false,
+      poruka: "Za izabrani period postoji potvrđena rezervacija",
+    };
+  }
+
+  return { dozvoljeno: true };
 }

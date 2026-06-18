@@ -4,9 +4,21 @@
 import { useState, useMemo, useEffect } from "react";
 import KalendarFiltriForm from "@/components/kalendar/KalendarFiltriForm";
 import KalendarGantt from "@/components/kalendar/KalendarGantt";
-import { KalendarFiltri, KalendarIznajmljivac } from "@/types/kalendar.types";
-import { actionFetchKalendarData } from "@/lib/actions/kalendar";
-import { generateDates } from "@/lib/utils/dates";
+import { KalendarFiltri, KalendarIznajmljivac } from "@/types/kalendar";
+import {
+  actionFetchKalendarData,
+  actionProvjeriMoguceRezerviranje,
+} from "@/lib/actions/kalendar";
+import { generateDates } from "@/lib/mock/kalendarMock";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -51,6 +63,9 @@ export default function KalendarClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Modalna poruka za blokade
+  const [blokiranoPorukom, setBlokiranoPorukom] = useState<string | null>(null);
+
   const datumi = useMemo(
     () => generateDates(datumOd, datumDo),
     [datumOd, datumDo],
@@ -71,7 +86,36 @@ export default function KalendarClient() {
     }
   }
 
-  // Inicijalni load s defaultnim filterima
+  async function handleIzradaRezervacije(
+    accommodationId: string,
+    od: string,
+    do_: string,
+  ) {
+    const provjera = await actionProvjeriMoguceRezerviranje(
+      accommodationId,
+      od,
+      do_,
+    );
+
+    if (!provjera.dozvoljeno) {
+      setBlokiranoPorukom(provjera.poruka);
+      return;
+    }
+
+    // TODO: otvoriti modalnu formu za upis rezervacije
+    // s prenesenim accommodationId, od, do_
+    console.log("Otvaranje forme za rezervaciju", { accommodationId, od, do_ });
+  }
+
+  async function handleIzradaPrijave(
+    accommodationId: string,
+    od: string,
+    do_: string,
+  ) {
+    // TODO: implementirati provjere i modalnu formu za prijavu
+    console.log("Otvaranje forme za prijavu", { accommodationId, od, do_ });
+  }
+
   useEffect(() => {
     handleSearch({
       gradId: null,
@@ -129,9 +173,31 @@ export default function KalendarClient() {
             iznajmljivaci={iznajmljivaci}
             datumi={datumi}
             today={today}
+            onIzradaRezervacije={handleIzradaRezervacije}
+            onIzradaPrijave={handleIzradaPrijave}
           />
         )}
       </div>
+
+      {/* Modalna poruka za blokade */}
+      <AlertDialog
+        open={blokiranoPorukom !== null}
+        onOpenChange={(open) => {
+          if (!open) setBlokiranoPorukom(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rezervacija nije moguća</AlertDialogTitle>
+            <AlertDialogDescription>{blokiranoPorukom}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setBlokiranoPorukom(null)}>
+              U redu
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
