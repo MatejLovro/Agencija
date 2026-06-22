@@ -1,0 +1,516 @@
+# CLAUDE.md — Aplikacija za turističku agenciju
+
+## O PROJEKTU
+
+Web aplikacija za turističku agenciju koja se bavi posredovanjem u iznajmljivanju smještaja u ime i za račun malih privatnih iznajmljivača. Agencija pronalazi smještaj prema željama gosta, šalje ponudu, prima uplatu i obavlja rezervaciju. Gostu izdaje račun u ime iznajmljivača, a iznajmljivaču šalje račun za proviziju.
+
+Aplikacija je namijenjena isključivo djelatnicima agencije (interna aplikacija, nije javna).
+
+---
+
+## TECH STACK
+
+- **Framework:** Next.js 15+ (App Router)
+- **Baza podataka:** Neon PostgreSQL (cloud)
+- **ORM:** Drizzle ORM
+- **UI:** shadcn/ui
+- **Validacija:** Zod v4 unutar React Hook Form-a
+- **Autentikacija:** Better Auth (samo djelatnici agencije)
+
+---
+
+## NAČIN RADA S CLAUDE-OM
+
+- Sav razvoj odvija se u **Claude chatu** — ne u Claude Code ni command line modu
+- Claude piše kod direktno u chat; svaka datoteka prikazana je zasebno s punom putanjom
+- Razvoj ide **korak po korak** uz diskusiju — Claude ne piše unaprijed više od dogovorenog koraka
+- Claude postavlja pitanja prije pisanja koda ako nešto nije jasno
+- Kad treba pokrenuti terminal naredbu, Claude je napiše kao code block s objašnjenjem
+- Claude nikad ne generira .tar ili zip arhive — sve ide kroz chat
+
+---
+
+## ARHITEKTURALNA NAČELA
+
+- Next.js ima dvostruku ulogu: web sučelje i backend API
+- **DB logika mora biti striktno odvojena od transportnog sloja** — Server Actions i API
+  rute ne smiju direktno sadržavati Drizzle upite; queries idu u poseban sloj (`lib/db/queries/`)
+- Biblioteke se instaliraju tek kada su potrebne, ne unaprijed
+- Aplikacija ima puno formi — preferirati konzistentne obrasce s React Hook Form + Zod + shadcn/ui
+
+---
+
+## ORGANIZACIJA DATOTEKA
+
+src/
+├── app/
+│ ├── (auth)/
+│ ├── (dashboard)/
+│ │ ├── rezervacije/
+│ │ ├── apartmani/
+│ │ ├── iznajmljivaci/
+│ │ │ ├── page.tsx
+│ │ │ ├── iznajmljivaci-client.tsx
+│ │ │ ├── actions.ts
+│ │ │ ├── novi/
+│ │ │ │ └── page.tsx
+│ │ │ └── [id]/
+│ │ │ └── uredi/
+│ │ │ └── page.tsx
+│ │ ├── gosti/
+│ │ └── kalendar/
+│ └── api/
+│
+├── components/
+│ ├── ui/ # shadcn/ui komponente
+│ ├── iznajmljivaci/ # Feature komponente
+│ └── layout/ # Sidebar, TopBar, Footer
+│
+├── lib/
+│ ├── db/
+│ │ ├── schema/
+│ │ ├── queries/
+│ │ └── index.ts
+│ ├── actions/
+│ ├── validations/
+│ └── utils/
+│
+└── types/
+
+---
+
+## DOMENSKA LOGIKA
+
+### Ključni entiteti
+
+- **Agencija (`agencies`)** — jedan tenant za sada; svaki drugi entitet nosi `agency_id`
+- **Iznajmljivač** — privatni vlasnik jednog ili više apartmana
+- **Apartman** — smještajna jedinica u vlasništvu iznajmljivača
+- **Gost** — osoba koja rezervira smještaj
+- **Rezervacija** — veza između gosta, apartmana i datuma; sadrži status, iznos, polog
+- **Ponuda** — prethodi rezervaciji; šalje se gostu mailom
+- **Račun** — dva tipa: račun gostu (u ime iznajmljivača) i račun iznajmljivaču (za proviziju)
+
+### Vrste iznajmljivača
+
+| Vrijednost          | Opis                                   | Ime obavezno  | Datum rođenja |
+| ------------------- | -------------------------------------- | ------------- | ------------- |
+| `fizicka_osoba`     | Privatni — nije u PDV-u                | Da            | Obavezan      |
+| `fizicka_osoba_pdv` | Privatni — u sustavu PDV-a             | Da            | Obavezan      |
+| `obrt`              | Obrt (surname = naziv, name = vlasnik) | Da            | Nije obavezan |
+| `tvrtka`            | Tvrtka (surname = naziv tvrtke)        | Nije obavezan | Nije obavezan |
+
+### Provizija
+
+- Tip **P** (postotak) — iznos mora biti > 0 i < 100
+- Tip **I** (iznos) — agencija definira vlastitu cijenu; iznos je 0 i nije editabilan, automatski se resetira na 0
+
+### Cjenik apartmana
+
+- `price_per_night` — cijena agencije (prikazuje se gostima)
+- `landlord_price` — cijena iznajmljivača (donja granica za pregovaranje), opcionalna
+
+### Tijek procesa (happy path)
+
+1. Gost kontaktira agenciju
+2. Djelatnik pretražuje dostupne apartmane prema kriterijima
+3. Agencija gostu šalje ponudu
+4. Gost uplaćuje cjelokupni iznos ili polog
+5. Agencija kreira rezervaciju i gostu šalje potvrdu
+6. Agencija izdaje račun gostu (u ime iznajmljivača)
+7. Agencija izdaje račun iznajmljivaču za proviziju
+
+---
+
+## PATTERNS
+
+### Master-Detail stranica
+
+**Struktura datoteka:**
+
+src/app/(dashboard)/[entitet]/
+├── page.tsx
+├── [entitet]-client.tsx
+└── actions.ts
+
+**Pravila:**
+
+- `page.tsx` je async Server Component, nema `"use client"`
+- `[entitet]-client.tsx` ima `"use client"` na vrhu
+- `actions.ts` ima `"use server"` na vrhu; samo poziva query funkcije
+- `useTransition` za async operacije; donje tablice dobiju `opacity-60` dok čekaju
+- Pri učitavanju selektiran je prvi red (`orderBy createdAt asc`)
+- Klik na glavni red → osvježi podtablicu 1 → selektira prvi red → osvježi podtablicu 2
+- Klik na red podtablice 1 → osvježi podtablicu 2
+
+**Toolbar iznad glavne tablice:**
+
+- Lijevo: `Input` za search (ikona `Search` iz lucide-react)
+- Desno: Briši (`variant destructive`), Promijeni (`variant outline`), Dodaj (default)
+
+**Sortiranje:**
+
+- Klik na zaglavlje kolone mijenja smjer (`asc → desc → asc`)
+- Vizualni indikator: ↑ ↓ za aktivno, ↕ (prigušeno) za neaktivno
+- Sort i search rade na klijentskoj strani
+
+### Forma iznajmljivača
+
+**Rute:** `/iznajmljivaci/novi` i `/iznajmljivaci/[id]/uredi`
+
+**Raspored:** dvije kolone, tab redosljed odozgo prema dolje po koloni
+
+**Kolona 1 (lijevo):**
+Vrsta iznajmljivača → Prezime/Naziv → Ime (skriveno za tvrtku) → OIB → Grad/mjesto → Adresa → Telefon → Email → IBAN
+
+**Kolona 2 (desno):**
+Rješenje → Broj ugovora → Tip provizije → Iznos provizije → Prioritetan → Datum rođenja (vidljiv samo za fizicka_osoba i fizicka_osoba_pdv) → [separator] → eVisitor podaci → Korisničko ime → Lozinka
+
+**Donji dio forme:**
+
+- Lijevo: tablica apartmana (Dodaj/Uredi/Briši)
+- Desno: cjenik selektiranog apartmana (inline upis)
+- Klik na apartman → prikazuje njegov cjenik desno
+
+### ApartmanModal komponenta
+
+**Četiri kartice:**
+
+**Kartica 1 — Osnovni podaci:**
+Kratki naziv | Puni naziv | Vrsta smještaja | Grad/mjesto | Adresa | Web URL | Broj zvjezdica (★★★☆☆) | Kategorizacijski broj | Sobe | Kreveta | Pom. ležajevi | Maks. osoba | Aktivan | Prioritetan | Čisti agencija | Opis
+
+**Kartica 2 — Dodatni detalji:**
+Parking | Klima | WiFi | Roštilj | Terasa | Pogled na more | Kućni ljubimci | Nepušači | Pristupačno invalidima | Kuhinja | Čajna kuhinja | Broj kupaonica | Kupaona tuš | Jacuzzi | Kat
+
+**Kartica 3 — U blizini / aktivnosti (3 grupe):**
+
+- Sadržaj u blizini: Bazen | Spa | Fitness | Restoran | El. puniona auta
+- Udaljenosti: Od mora (m) | Od centra (m) | Od trgovine (m)
+- Aktivnosti: Bicikliranje | Ronjenje | Planinarenje
+
+**Kartica 4 — Katastarski podaci:**
+Katastarska općina | Katastarska čestica (oba nullable, nisu obavezna)
+
+### Inline cjenik
+
+Kolone: Datum od | Datum do | Cijena/noć (bold) | Cijena izn. (muted)
+Novi red se dodaje na dno tablice s praznim inputima — korisnik upiše i klikne "Potvrdi"
+
+### Combobox s inline dodavanjem
+
+Koristi se za Grad/mjesto svugdje u aplikaciji.
+Pattern: `Command` + `Popover` iz shadcn/ui + opcija "➕ Dodaj novi grad" na dnu liste.
+
+### Formatiranje podataka
+
+```typescript
+// Datum: DD.MM.YYYY.
+function formatDate(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}.${m}.${y}.`;
+}
+
+// Iznos: dvije decimale
+parseFloat(value).toFixed(2);
+
+// Enum → hrvatski naziv
+const vrstaLabel: Record<string, string> = {
+  fizicka_osoba: "Fizička osoba",
+  fizicka_osoba_pdv: "Fizička osoba (PDV)",
+  obrt: "Obrt",
+  tvrtka: "Tvrtka",
+};
+```
+
+### Utility funkcije
+
+- Datum utility funkcije (parseHrDate, validateDatumRodjenja...):
+  `src/lib/utils/dates.ts`
+- Formater funkcije (capitalizeWords...):
+  `src/lib/utils/formatters.ts`
+
+### NoviIznajmljivacClient / UrediIznajmljivacClient pattern
+
+Stranice `/iznajmljivaci/novi` i `/iznajmljivaci/[id]/uredi` dijele isti
+layout: forma iznajmljivača gore, tablice apartmana i cjenika dolje.
+
+**Ključne odluke:**
+
+- `page.tsx` ostaje Server Component — fetchuje gradove, iznajmljivača i
+  apartmane; predaje ih Client Componentu
+- Client Component drži sav state (apartmani, cjenici, selekcije, modali)
+- Nakon spremi novog iznajmljivača, `LandlordForm` poziva `onSaved` callback
+  umjesto redirecta; gumb Spremi postaje disabled
+- Cjenici se učitavaju lazy (tek kada korisnik klikne na apartman)
+- Cjenici su keširani u `Record<string, PricelistRow[]>` — mapa
+  `accommodationId → redovi`; nema ponovnog fetchanja za već učitane
+
+**ApartmanModal:**
+
+- Multi-step forma s 4 kartice: Osnovni podaci, Sadržaji,
+  Lokacija i aktivnosti, Ostalo
+- Slobodna navigacija između kartica bez validacijskih gatova
+- Kratki naziv uvijek uppercase
+- Pri otvaranju za novi apartman: grad i adresa se preuzimaju od iznajmljivača
+- Pri otvaranju za uredi: `useEffect` na `[open, defaultValues]` resetira
+  formu s podacima iz baze
+- `handleClose` čuva vrstu, zvjezdice, grad i adresu između dodavanja
+
+**CjenikModal:**
+
+- Datum od/do u HR formatu s auto-formatiranjem
+- Validacija: datum do mora biti nakon datuma od (ISO usporedba)
+- `nextDateFrom`: automatski se nudi zadnji `dateTo + 1 dan`
+- Polje "Cijena prema iznajmljivaču" enabled samo ako `tipProvizije === "I"`
+- `autoFocus` na polje cijene pri otvaranju
+- Pri uredi: `useEffect` na `[open]` resetira formu s postojećim podacima
+
+### AccommodationRow interface
+
+Definiran i exportan iz `ApartmanModal.tsx`. Sadrži:
+`id, name, vrstaApartmana, brojSoba, brojKreveta, brojPomocnihLezajeva`
+
+### PricelistRow interface
+
+Definiran i exportan iz `CjenikModal.tsx`. Sadrži:
+`id, dateFrom, dateTo, pricePerNight, landlordPrice`
+(datumi u ISO formatu u stanju, HR format samo za prikaz)
+
+---
+
+## ZOD NAPOMENE (v4)
+
+- Ne koristiti `required_error` ni `invalid_type_error` — ne postoje u v4
+- Koristiti `.min(1, "poruka")` za obavezna polja
+- Za opcionalna string polja: `.optional().or(z.literal(""))`
+- Za uvjetnu validaciju koristiti `.and(z.discriminatedUnion(...))`
+- Landlord schema ima dva `discriminatedUnion`: jedan za vrstu iznajmljivača, jedan za tip provizije
+
+---
+
+## ENVIRONMENT
+
+### Varijable okoline
+
+DATABASE_URL=postgresql://...
+AGENCY_ID=uuid-agencije
+
+- `.env` i `.env.local` moraju biti identični
+- Next.js čita `.env.local`; tsx skripte čitaju `.env`
+
+### Pokretanje skripti na Windowsu
+
+- `tsx` nije globalno dostupan — uvijek kroz `npm run` ili `npx tsx`
+- `grep` ne postoji na Windowsu — gledati direktno u datoteku
+- Za SQL migracije koje ne prođu kroz `db:migrate`: Neon konzola → SQL Editor
+
+---
+
+## KALENDAR REZERVACIJA
+
+Prikaz u stilu Gantt dijagrama:
+
+- **1. stupac:** iznajmljivač
+- **2. stupac:** apartman
+- **Ostali stupci:** dani (tjedan ili mjesec)
+
+---
+
+## KONVENCIJE
+
+- Jezik sučelja: **hrvatski**
+- Kod i komentari: **engleski**
+- Nazivi datoteka i ruta: **kebab-case**
+- Komponente: **PascalCase**
+- Server Actions: prefiks `action` (npr. `actionCreateLandlord`)
+- Query funkcije: prefiks prema operaciji (npr. `getLandlords`, `createAccommodation`)
+- Nazivi varijabli: **bez hrvatskih dijakritičkih znakova** (č→c, š→s, ž→z, ć→c, đ→d)
+
+---
+
+## UX KONVENCIJE — COMBOBOX S DODAVANJEM
+
+- Fiksni gumb "Dodaj novi..." ispod liste, izvan `CommandList`,
+  odvojen s `border-t`
+- Koristi `onMouseDown` s `e.preventDefault()` umjesto `onClick`
+- Otvara zasebni `Dialog` s formom za unos
+- Nakon spremanja: novi zapis se dodaje u lokalnu listu i automatski
+  selektira — bez refresha stranice
+- Primjer: `CityCombobox.tsx` + `AddCityDialog.tsx`
+
+### Princip
+
+Combobox koji omogućuje inline dodavanje novog zapisa (grad, vrsta,
+tag...) uvijek ima fiksni gumb "Dodaj novi..." ispod liste, izvan
+`CommandList`. Gumb je uvijek vidljiv, neovisno o tome što je upisano
+u search polje.
+
+### Implementacija
+
+- Gumb se postavlja unutar `<Command>` ali **izvan** `<CommandList>`
+- Odvojen od liste s `border-t`
+- Koristi `onMouseDown` s `e.preventDefault()` umjesto `onClick` —
+  sprječava blur koji bi zatvorio popover prije nego se dialog otvori
+- Otvara zasebni `Dialog` s formom za unos novog zapisa
+- Nakon uspješnog spremanja: novi zapis se dodaje u lokalnu listu i
+  automatski selektira — bez refresha stranice
+
+### Primjer
+
+`src/components/iznajmljivaci/CityCombobox.tsx` +
+`src/components/iznajmljivaci/AddCityDialog.tsx`
+
+---
+
+## POSLOVNA PRAVILA I ODLUKE
+
+### Multi-tenancy i OIB provjera
+
+- Svaka provjera jedinstvenosti OIB-a mora uključivati `agency_id` — isti OIB
+  može postojati u više agencija (SaaS scenarij)
+- `AGENCY_ID` se čita iz `process.env.AGENCY_ID` direktno u query sloju
+  (`lib/db/queries/`), ne prosljeđuje se kroz action → query
+
+### Indeksi
+
+- Na tablici `landlords` postoji kompozitni unique indeks na
+  `(agency_id, oib)` umjesto unique constraint samo na `oib`
+- `.unique()` na `oib` polju je uklonjeno iz Drizzle sheme
+
+### Forme — UX konvencije
+
+- `autoComplete="new-password"` na svim osobnim poljima (ime, prezime,
+  OIB...) — Chrome ignorira `autoComplete="off"` za prepoznatljiva polja
+- Numerički inputi s default vrijednošću 0: `onFocus={(e) => e.target.select()}`
+- Datum u hrvatskom formatu `dd.mm.gggg.` — koristiti `type="text"` s
+  auto-formatiranjem, ne `type="date"`
+- Polje lozinka: toggle show/hide s ikonom Eye/EyeOff, `tabIndex={-1}` na
+  toggle gumbu
+- Kada korisnik promijeni vrstu iznajmljivača, resetirati polja koja nisu
+  relevantna za novu vrstu (`name` i `datumRodjenja` za tvrtku,
+  `datumRodjenja` za obrt)
+
+### Greške iz Server Actions
+
+- Actions vraćaju `{ data }` ili `{ error: string }` — nikad ne throwaju
+- Greška se prikazuje pomoću `form.setError("poljeNaziv", { type: "manual", message })`
+  direktno ispod relevantnog polja, bez toast biblioteke
+
+### Datumi
+
+- HR format `dd.mm.gggg.` u formama, ISO `yyyy-mm-dd` u bazi
+- Konverzija: `isoToHrDate()` za prikaz, `hrDateToIso()` za spremanje
+- Validacija datuma rođenja: ne smije biti u budućnosti ni stariji od 85 god.
+- Sve date utility funkcije: `src/lib/utils/dates.ts`
+
+### Formatiranje teksta
+
+- `capitalizeWords()` na poljima ime, prezime, naziv grada
+- Sve formatter funkcije: `src/lib/utils/formatters.ts`
+
+### OIB validacija
+
+- Algoritam ISO 7064 MOD 11,10 u `src/lib/utils/validateOib.ts`
+- Primjenjuje se kao Zod `.refine()` u validacijskoj shemi
+
+---
+
+## DOSTAVLJENI MATERIJALI (svježe uz svaki chat)
+
+- Drizzle sheme: `landlords.ts`, `accommodations.ts`, `pricelist.ts`
+- Zod validacije: `landlord.ts`, `accommodation.ts`, `pricelist.ts`
+- Server Actions: `landlords.ts` (actions)
+- Query funkcije po potrebi
+
+| Datoteka       | Putanja u projektu     |
+| -------------- | ---------------------- |
+| Drizzle sheme  | `src/lib/db/schema/`   |
+| Zod validacije | `src/lib/validations/` |
+| Server Actions | `src/lib/actions/`     |
+| Query funkcije | `src/lib/db/queries/`  |
+
+---
+
+## NOVE TABLICE U BAZI (Kalendar rezervacija)
+
+Dodane su sljedeće tablice i sheme:
+
+### `lib/db/schema/guests.ts`
+
+Tablica gostiju s podacima potrebnim za eVisitor prijavu (spol, datum rođenja, mjesto i država rođenja, tip i broj dokumenta, državljanstvo, OIB).
+
+### `lib/db/schema/partners.ts`
+
+Tablica poslovnih partnera (agencije koje šalju goste). Sadrži naziv, OIB, adresu, IBAN, PDV status i kontakt osobu.
+
+### `lib/db/schema/reservations.ts`
+
+Tablica rezervacija. Ključne napomene:
+
+- `redni_broj` je `bigserial` — automatski inkrementalni broj koji se prikazuje u kalendaru (npr. "700")
+- Gost se upisuje samo kao tekstualna polja (`guest_name`, `guest_surname`) — ne veže se na tablicu gostiju jer rezervacija još nije potvrđena
+- `avans_percent` i `avans_amount` su nullable — nisu uvijek potrebni
+- `rezervation_valid` je nullable — walk-in gosti nemaju rok valjanosti
+- Status: `nepotvrdjena` | `potvrdjena`
+
+### `lib/db/schema/stays.ts`
+
+Tablica prijava (boravaka) i stavki prijave. Dvije tablice u jednoj datoteci:
+
+**`stays`** — nositelj prijave:
+
+- `redni_broj` je `bigserial` — prikazuje se u kalendaru s prefiksom "P" (npr. "P699")
+- `reservation_id` je nullable — walk-in gost nema rezervaciju
+- `guest_id` obavezan — kod prijave gost mora biti upisan u tablicu gostiju
+- `fakturirana` — je li račun gostu već izdan
+- `racun_u_ime_iznajmljivaca` — izdaje li agencija račun u ime iznajmljivača
+
+**`stays_stavke`** — jedna stavka = jedna osoba koja boravi:
+
+- Datumi mogu biti različiti od datuma na `stays` (gosti dolaze/odlaze u različito vrijeme)
+- `category` enum — eVisitor kategorije boravka
+- `date_of_resid_permit` nullable — datum isteka dozvole boravka (strani državljani)
+
+---
+
+## KONVENCIJE ZA KALENDAR
+
+- Rezervacije se prikazuju **žutom bojom**, oznaka: redni broj (npr. "700")
+- Prijave se prikazuju **zelenom bojom**, oznaka: "P" + redni broj (npr. "P699")
+- Istekle rezervacije prikazuju se **drugačijom bojom** — djelatnik ručno odlučuje što dalje
+- **Dan preklapanja** (narančasta) — prezentacijski podatak, dan kada jedna rezervacija/prijava završava a druga počinje; računa se u aplikaciji, nema polja u bazi
+
+## PRAVILA PREKLAPANJA — PRIJAVE I REZERVACIJE
+
+### Prijave (tablica `stays`)
+
+- Prijava znači da je apartman zauzet sve dok se prijava ne zatvori (odjava).
+- Sljedeća prijava u istom apartmanu moguća je samo od zadnjeg dana prethodne prijave (gost se odjavljuje prijepodne, novi gost se prijavljuje popodne istog dana).
+- Zaključak: kod prijava preklapanje može trajati **najviše jedan dan** — onaj na koji se odjava i nova prijava poklapaju. Ovo se provjerava i validira prilikom unosa prijave (implementacija slijedi u modulu unosa).
+
+### Rezervacije (tablica `reservations`)
+
+- Za jedan apartman moguće je napraviti više rezervacija za isti period ili periode koji se preklapaju.
+- Rezervacija je neobvezujuća — agencija odlučuje koju će potvrditi (obično onu koja je prva uplaćena).
+- Zaključak: kod rezervacija preklapanje **može trajati više dana** i to je normalno, očekivano stanje (više zainteresiranih gostiju za isti termin), ne greška.
+
+### Prikaz preklapanja u kalendaru
+
+- Dan preklapanja = dan u kojem su **2 ili više različitih događaja** (rezervacija i/ili prijava) istovremeno aktivni u istom apartmanu.
+- Uvijek se prikazuje **narančasta boja, bez rednog broja**, bez obzira radi li se o:
+  - rubnom slučaju kod prijava (checkout = checkin, jedan dan), ili
+  - preklapanju više rezervacija kroz više dana.
+- Boja preklapanja je uvijek ista (narančasta) — ne razlikuje se po broju ili vrsti preklapajućih događaja, kako bi korisnik odmah prepoznao "ovdje se nešto preklapa" bez dodatnog tumačenja boja.
+- Planirano (kasnija faza): hover preko dana preklapanja prikazuje listu svih preklapajućih rezervacija/prijava s rednim brojevima.
+- Preklapanje stay-a i rezervacije u praksi se ne smije dogoditi (rezervacija je moguća samo na zadnji dan postojeće prijave) — ako se dogodi, to je rubni slučaj koji se rješava u modulu unosa prijava/rezervacija, ne u prikazu kalendara.
+
+### Algoritam (implementirano u `actionFetchKalendarData`)
+
+Za svaki dan u prikazanom rasponu broje se svi aktivni događaji (rezervacije + prijave) u apartmanu. Ako je broj aktivnih događaja ≥ 2, dan se oznacava kao "preklapanje" (`tip: "preklapanje"`), čime se prirodno pokrivaju oba gornja slučaja bez posebne logike za rubne datume.
+
+## NAPOMENE
+
+- Projekt se razvija na dva računala — Neon PostgreSQL omogućuje dijeljenu bazu
+- Multi-tenancy nije aktivan, ali **svaki entitet mora imati `agency_id`** od početka
+- Drizzle migracije koje ne prođu kroz `db:migrate` primjenjuju se ručno u Neon SQL Editoru
+- Autentikacija se implementira u jednom od kasnijih sprintova

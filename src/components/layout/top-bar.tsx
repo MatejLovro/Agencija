@@ -24,7 +24,10 @@ const menuItems = [
   {
     label: "Pregledi",
     icon: LayoutList,
-    children: [{ href: "/kalendar", label: "Kalendar rezervacija" }],
+    children: [
+      { href: "/kalendar", label: "Kalendar" },
+      { href: "/rezervacije", label: "Pregled rezervacija" },
+    ],
   },
   {
     label: "Izvješća",

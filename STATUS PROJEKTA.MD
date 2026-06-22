@@ -2,221 +2,137 @@
 
 ## Okruženje
 
-- OS: Windows
-- Dva računala (kuća i posao) — Neon PostgreSQL kao zajednička cloud baza
-- Next.js projekt u mapi: C:\Projects\agencija-20\
+- OS: Windows, dva računala (kuća i posao)
+- Neon PostgreSQL kao zajednička cloud baza
+- Next.js projekt: `C:\Projects\agencija-20\`
 
-## Što je gotovo
+---
+
+## DOVRŠENO
 
 ### Infrastruktura
 
-- Next.js projekt inicijaliziran (App Router, TypeScript, Tailwind, src/, alias @/\*)
-- shadcn/ui instaliran — stil: radix-nova, Neutral base color
-- Drizzle ORM + @neondatabase/serverless konfigurirani
-- Drizzle klijent: src/lib/db/index.ts
-- Drizzle config: drizzle.config.ts
-- Zod v4 instaliran
-- @hookform/resolvers instaliran
+- Next.js + TypeScript + Tailwind + App Router
+- shadcn/ui (radix-nova, Neutral), Drizzle ORM + Neon, Zod v4
+- Sidebar, TopBar, Footer, Dashboard layout
+- Redirect `/` → `/iznajmljivaci`
 
-### shadcn/ui komponente instalirane
+### shadcn/ui komponente
 
-- form, select, input, label, checkbox, radio-group, textarea,
-  dialog, separator, tabs, command, popover
+form, select, input, label, checkbox, radio-group, textarea,
+dialog, separator, tabs, command, popover, alert-dialog
 
-### Layout aplikacije
+### Baza — migrirane tablice
 
-- Sidebar, TopBar, Footer
-- Dashboard layout: src/app/(dashboard)/layout.tsx
-- Redirect s / na /iznajmljivaci
+agencies, cities, landlords, accommodations, pricelist,
+guests, partners, reservations, stays, stays_stavke
 
-### Sheme u bazi (sve migrirane)
+### Seed podaci
 
-- agencies
-- cities (id, name, zip)
-- landlords — kompozitni unique indeks (agency_id, oib)
-- accommodations — sva polja uključujući amenities, lokaciju,
-  aktivnosti, katastarske podatke
-- pricelist — uključuje landlord_price
+- 1 agencija, gradovi s poštanskim brojevima
+- Iznajmljivači s apartmanima i cjenicima
+- 3 gosta, 4 rezervacije, 3 prijave (uključ. walk-in)
+- Testni seedovi za preklapanje (rezervacija 1005, 1006, 1007)
+- Grad "Nepoznato" (id=10) za placeholder partnera
 
-### Seed podaci u bazi
+### Query sloj (`src/lib/db/queries/`)
 
-- 1 agencija: Fiskalna agencija d.o.o.
-- Gradovi s poštanskim brojevima
-- Više iznajmljivača s apartmanima i cjenicima
-
-### Stranice
-
-- /iznajmljivaci — master-detail stranica s tablicom iznajmljivača,
-  tablicom apartmana i cjenikom; sortiranje i pretraga
-- /iznajmljivaci/novi — forma za unos novog iznajmljivača +
-  tablice apartmana i cjenika ispod forme ✅
-- /iznajmljivaci/[id]/uredi — forma za izmjenu iznajmljivača +
-  tablice apartmana i cjenika ispod forme ✅
-
-### Query funkcije (src/lib/db/queries/)
-
-- cities.ts — getCities(), createCity()
-- landlords.ts — getLandlords(), getLandlordById(),
-  getLandlordByOib(), createLandlord(), updateLandlord()
-- accommodations.ts — getAccommodationsByLandlord(),
-  getAccommodationById(), createAccommodation(),
-  updateAccommodation(), deleteAccommodation()
-- pricelist.ts — getPricelistByAccommodation(), createPricelistEntry(),
+- `cities.ts` — getCities(), createCity()
+- `landlords.ts` — getLandlords(), getLandlordById(), getLandlordByOib(),
+  createLandlord(), updateLandlord()
+- `accommodations.ts` — getAccommodationsByLandlord(), getAccommodationById(),
+  createAccommodation(), updateAccommodation(), deleteAccommodation()
+- `pricelist.ts` — getPricelistByAccommodation(), createPricelistEntry(),
   updatePricelistEntry(), deletePricelistEntry()
+- `kalendar.ts` — getKalendarData(filtri)
+- `reservations.ts` — getAccommodationWithLandlord(), createReservation()
+- `partners.ts` — getPartners(), quickCreatePartner()
 
-### Server Actions (src/lib/actions/)
+### Server Actions (`src/lib/actions/`)
 
-- cities.ts — actionGetCities, actionCreateCity
-- landlords.ts — actionCreateLandlord, actionUpdateLandlord,
+- `cities.ts` — actionGetCities, actionCreateCity
+- `landlords.ts` — actionCreateLandlord, actionUpdateLandlord,
   actionCreateAccommodation, actionUpdateAccommodation,
   actionDeleteAccommodation, actionCreatePricelistEntry,
   actionUpdatePricelistEntry, actionDeletePricelistEntry,
   actionGetPricelistByAccommodation, actionGetAccommodationById
+- `kalendar.ts` — actionFetchKalendarData, actionProvjeriMoguceRezerviranje
+- `reservations.ts` — actionGetAccommodationWithLandlord, actionCreateReservation
+- `partners.ts` — actionGetPartners, actionQuickCreatePartner
 
-### Validacije (src/lib/validations/)
+### Validacije (`src/lib/validations/`)
 
-- landlord.ts — Zod v4 shema s dva discriminatedUnion
-- accommodation.ts — Zod v4 shema (sva polja)
-- pricelist.ts — Zod v4 shema s ISO usporedbom datuma
-- city.ts — Zod v4 shema
+- `landlord.ts` — discriminatedUnion (vrsta + tip provizije)
+- `accommodation.ts` — sva polja (4 kartice)
+- `pricelist.ts` — ISO usporedba datuma
+- `city.ts`
+- `reservation.ts` — dateFrom > danas, dateTo > dateFrom, rezervationValid < dateFrom
+- `partner.ts` — minimalni unos (samo naziv)
 
-### Utility funkcije
+### Utility funkcije (`src/lib/utils/`)
 
-- src/lib/utils/validateOib.ts — ISO 7064 MOD 11,10
-- src/lib/utils/dates.ts — parseHrDate(), validateDatumRodjenja(),
-  isoToHrDate(), hrDateToIso()
-- src/lib/utils/formatters.ts — capitalizeWords()
+- `validateOib.ts` — ISO 7064 MOD 11,10
+- `dates.ts` — parseHrDate(), validateDatumRodjenja(), isoToHrDate(), hrDateToIso()
+- `formatters.ts` — capitalizeWords()
+- `kalendarValidacija.ts` — checkPostojiPrijavaUPeriodu(),
+  checkPostojiPotvrdjenaRezervacijaUPeriodu()
 
-### Komponente (src/components/iznajmljivaci/)
+### Stranice
 
-- LandlordForm.tsx — forma za unos i izmjenu iznajmljivača;
-  prima onSaved callback i submitDisabled prop
-- CityCombobox.tsx — combobox s inline dodavanjem grada
-- AddCityDialog.tsx — modalna forma za dodavanje grada
-- ApartmanModal.tsx — multi-step modal s 4 kartice za apartman;
-  exporta AccommodationRow interface
-- CjenikModal.tsx — modal za upis i izmjenu cjenika;
-  exporta PricelistRow interface
+- `/iznajmljivaci` — master-detail (tablica iznajmljivača + apartmani + cjenik)
+- `/iznajmljivaci/novi` — forma za novog iznajmljivača + apartmani + cjenik
+- `/iznajmljivaci/[id]/uredi` — forma za izmjenu + apartmani + cjenik
+- `/kalendar` — Gantt kalendar rezervacija
 
-### Stranice (Client Components)
+### Komponente
 
-- NoviIznajmljivacClient.tsx —
-  src/app/(dashboard)/iznajmljivaci/novi/
-- UrediIznajmljivacClient.tsx —
-  src/app/(dashboard)/iznajmljivaci/[id]/uredi/
-
-## Što nije gotovo
-
-- Brisanje apartmana (uvjeti još nisu definirani)
-- Brisanje cjenika
-- Brisanje iznajmljivača
-- Kalendar rezervacija (sljedeće)
-- Rezervacije, gosti, računi
-- Autentikacija (Better Auth)
-
-## Sljedeći korak
-
-- Kalendar rezervacija u stilu Gantt dijagrama:
-  
-## KALENDAR REZERVACIJA — Status: u izradi
-
-### Što je napravljeno
-- Definirane i kreirane sve tablice u Neon bazi: `guests`, `partners`, `reservations`, `stays`, `stays_stavke`
-- Kreirane Drizzle sheme: `guests.ts`, `partners.ts`, `reservations.ts`, `stays.ts`
-- SQL migracija uspješno izvršena na Neon bazi
-
-### Što slijedi
-- Implementacija Drizzle query sloja za kalendar
-- Implementacija Server Action za dohvat podataka kalendara
-- Implementacija custom Gantt komponente
+- `LandlordForm.tsx` — forma iznajmljivača (onSaved callback, submitDisabled prop)
+- `CityCombobox.tsx` — combobox s inline dodavanjem grada
+- `AddCityDialog.tsx` — modal za dodavanje grada
+- `ApartmanModal.tsx` — 4-karticni modal za apartman (exporta AccommodationRow)
+- `CjenikModal.tsx` — modal za cjenik (exporta PricelistRow)
+- `NoviIznajmljivacClient.tsx`, `UrediIznajmljivacClient.tsx`
+- `KalendarGantt.tsx` — Gantt tablica s interaktivnošću
+- `KalendarFiltriForm.tsx` — filter traka
+- `RezervacijaModal.tsx` — modalna forma za novu rezervaciju
+- `KalendarClient.tsx` — orchestrator kalendara
+- `combobox-with-create.tsx` — generički combobox s inline kreiranjem
+  (dorađen: rukovanje greškom, try/catch, prikaz poruke)
 
 ---
 
-## ARHITEKTURA GANTT KOMPONENTE
+## U TIJEKU
 
-### Koncept
-Custom React komponenta — bez vanjskih biblioteka. Koristi HTML tablicu s CSS `position: sticky` za fiksiranje lijevih stupaca pri horizontalnom scrollu.
+### Kalendar — otvorene stavke
 
-### Struktura prikaza
-```
-┌─────────────────┬────────────┬───────┬───────┬───────┐
-│ IZNAJMLJIVAČI   │ KAPACITETI │ 02.06 │ 03.06 │ 04.06 │
-├─────────────────┼────────────┼───────┼───────┼───────┤
-│ AGIĆ ZRINKA     │            │       │       │       │
-│                 │ ST22-6     │       │       │       │
-│                 │ AP22-5     │       │       │       │
-├─────────────────┼────────────┼───────┼───────┼───────┤
-│ BATINIĆ IVAN    │            │       │       │       │
-│                 │ S2-6       │ P699  │ P699  │       │
-└─────────────────┴────────────┴───────┴───────┴───────┘
-```
-- Svaki red = jedan apartman
-- Iznajmljivač je "header red" bez ćelija za datume
-- Lijeva dva stupca su sticky (ne scrollaju)
-- Datumski stupci scrollaju horizontalno
+- Konteksni izbornik: različite opcije za klik na prazan dan / rezervaciju /
+  prijavu (infrastruktura postavljena, logika nije implementirana)
+- Forma za **izradu prijave** (stays) — TODO u handleIzradaPrijave
+- Combobox za Grad i Iznajmljivač u filter traci (trenutno null)
+- Hover tooltip na danima preklapanja — lista preklapajućih rezervacija
 
-### TypeScript tipovi komponente
-```typescript
-type KalendarDan = {
-  datum: string                              // "2026-06-02"
-  tip: "rezervacija" | "prijava" | "preklapanje" | null
-  redniBroj: number | null
-  boja: string
-}
+---
 
-type KalendarApartman = {
-  accommodationId: string
-  naziv: string
-  dani: KalendarDan[]                        // jedan element po danu u rasponu
-}
+## PLANIRANO
 
-type KalendarIznajmljivac = {
-  landlordId: string
-  ime: string
-  apartmani: KalendarApartman[]
-}
+### Tablica rezervacija (`/rezervacije`)
 
-type KalendarProps = {
-  iznajmljivaci: KalendarIznajmljivac[]
-  datumOd: string
-  datumDo: string
-}
-```
+- Pregled svih rezervacija
+- Izrada i slanje ponude gostu
+- Praćenje statusa plaćanja
+- Pretvaranje rezervacije u prijavu
 
-### Tijek podataka
-```
-Korisnik unosi filtere (grad, datumi, sobe, oprema...)
-        ↓
-Server Action: fetchKalendarData(filtri)
-        ↓
-Query spaja: accommodations + landlords + reservations + stays
-        ↓
-Rezultat se transformira u KalendarIznajmljivac[]
-        ↓
-Komponenta <KalendarGantt> crta tablicu
-```
+### Ostalo
 
-### Ključno načelo
-Server Action vraća podatke već transformirane u oblik koji komponenta direktno konzumira. Komponenta ne radi nikakve izračune — samo crta što dobije.
+- CRUD stranica za partnere (`/partneri`)
+- Modul izvještaja (`/izvjestaji`) — lista apartmana s cjenikom i podacima
+  o iznajmljivaču, prikaz na ekranu + PDF export (`@react-pdf/renderer`)
+- Brisanje rezervacija, prijava, iznajmljivača
+- Autentikacija (Better Auth)
 
-### Boje u kalendaru
-| Tip                     | Boja                   | Oznaka                     |
-|---                      |---                     |---                         |
-| Prijava                 | Zelena                 | P + redni_broj (npr. P699) |
-| Rezervacija potvrđena   | Žuta                   | redni_broj (npr. 700)      |
-| Rezervacija nepotvrđena | Drugačija nijansa žute | redni_broj                 |
-| Rezervacija istekla     | Crvena / siva          | redni_broj                 |
-| Dan preklapanja         | Narančasta             | —                          |
+---
 
-### Forma za filtere
-Filteri koji će biti implementirani:
-- Grad (combobox)
-- Iznajmljivač (combobox)
-- Od datuma / Do datuma
-- Broj soba, broj kreveta
-- Samo prioritetni (checkbox)
-- Oprema: klima, parking, terasa, internet, kućni ljubimac, pogled na more itd.
-- Tip rezervacije: sve / samo potvrđene / samo nepotvrđene
+## POZNATI PROBLEMI / ODGOĐENO
 
-### Upravljačka dugmad
-Ispod dijagrama — za dodavanje rezervacija i prijava direktno iz kalendara. Implementacija u kasnijoj fazi.
+- Kad se dodaje novi iznajmljivač, modal za apartman ne popunjava automatski
+  grad i adresu iznajmljivača (odgođeno)

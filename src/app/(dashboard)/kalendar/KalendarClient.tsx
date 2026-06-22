@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from "react";
 import KalendarFiltriForm from "@/components/kalendar/KalendarFiltriForm";
 import KalendarGantt from "@/components/kalendar/KalendarGantt";
+import RezervacijaModal from "@/components/kalendar/RezervacijaModal";
 import { KalendarFiltri, KalendarIznajmljivac } from "@/types/kalendar";
 import {
   actionFetchKalendarData,
@@ -49,6 +50,14 @@ function getTodayIso(): string {
   return d.toISOString().slice(0, 10);
 }
 
+// ─── Tip za otvoreni modal rezervacije ──────────────────────────────────────
+
+type RezervacijaModalState = {
+  accommodationId: string;
+  dateFromIso: string;
+  dateToIso: string;
+} | null;
+
 // ─── Komponenta ──────────────────────────────────────────────────────────────
 
 export default function KalendarClient() {
@@ -63,8 +72,12 @@ export default function KalendarClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Modalna poruka za blokade
+  // Modalna poruka za blokade (provjera prije otvaranja forme)
   const [blokiranoPorukom, setBlokiranoPorukom] = useState<string | null>(null);
+
+  // Modal za upis rezervacije
+  const [rezervacijaModal, setRezervacijaModal] =
+    useState<RezervacijaModalState>(null);
 
   const datumi = useMemo(
     () => generateDates(datumOd, datumDo),
@@ -86,6 +99,27 @@ export default function KalendarClient() {
     }
   }
 
+  // Ponovno dohvaća trenutno prikazani raspon (koristi se nakon spremanja rezervacije)
+  function refreshKalendar() {
+    handleSearch({
+      gradId: null,
+      landlordId: null,
+      datumOd,
+      datumDo,
+      brojSoba: null,
+      brojKreveta: null,
+      brojPomocnihLezajeva: null,
+      samoPotvrdjene: false,
+      samoNepotvrdjene: false,
+      imaKlima: false,
+      imaParking: false,
+      imaWifi: false,
+      kucniLjubimac: false,
+      pogledNaMore: false,
+      samoPrioritetan: false,
+    });
+  }
+
   async function handleIzradaRezervacije(
     accommodationId: string,
     od: string,
@@ -102,9 +136,11 @@ export default function KalendarClient() {
       return;
     }
 
-    // TODO: otvoriti modalnu formu za upis rezervacije
-    // s prenesenim accommodationId, od, do_
-    console.log("Otvaranje forme za rezervaciju", { accommodationId, od, do_ });
+    setRezervacijaModal({
+      accommodationId,
+      dateFromIso: od,
+      dateToIso: do_,
+    });
   }
 
   async function handleIzradaPrijave(
@@ -198,6 +234,23 @@ export default function KalendarClient() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal za upis nove rezervacije */}
+      {rezervacijaModal && (
+        <RezervacijaModal
+          open={rezervacijaModal !== null}
+          onOpenChange={(open) => {
+            if (!open) setRezervacijaModal(null);
+          }}
+          accommodationId={rezervacijaModal.accommodationId}
+          dateFromIso={rezervacijaModal.dateFromIso}
+          dateToIso={rezervacijaModal.dateToIso}
+          onSaved={() => {
+            setRezervacijaModal(null);
+            refreshKalendar();
+          }}
+        />
+      )}
     </div>
   );
 }
