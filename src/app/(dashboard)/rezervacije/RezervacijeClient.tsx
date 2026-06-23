@@ -5,6 +5,16 @@ import { useState, useEffect } from "react";
 import { actionGetReservations } from "@/lib/actions/reservations";
 import { RezervacijaTableRow } from "@/lib/db/queries/reservations";
 import { isoToHrDate } from "@/lib/utils/dates";
+import {
+  FileText,
+  CheckCircle,
+  Ticket,
+  LogIn,
+  Ban,
+  Trash2,
+  Search,
+  X,
+} from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -20,6 +30,82 @@ function statusLabel(row: RezervacijaTableRow): string {
   if (row.realizirana) return "Realizirana";
   if (row.status === "potvrdjena") return "Potvrđena";
   return "Aktivna";
+}
+
+// ─── Toolbar ─────────────────────────────────────────────────────────────────
+function ToolbarButton({
+  icon: Icon,
+  label,
+  danger = false,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  danger?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border-none",
+        "bg-transparent cursor-pointer transition-colors duration-150",
+        "hover:bg-white/10",
+        danger ? "text-red-400" : "text-neutral-400",
+      ].join(" ")}
+    >
+      <Icon size={13} aria-hidden="true" />
+      {label}
+    </button>
+  );
+}
+
+function ToolbarGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-0.5 bg-neutral-800 rounded-full px-1 py-1">
+      {children}
+    </div>
+  );
+}
+
+function ToolbarSeparator() {
+  return <div className="w-px h-5 bg-neutral-300/30 mx-1" />;
+}
+
+function Toolbar() {
+  return (
+    <div className="flex items-center gap-2 flex-wrap px-4 py-2 border-t border-slate-200 bg-slate-50">
+      {/* Grupa 1 */}
+      <ToolbarGroup>
+        <ToolbarButton icon={FileText} label="Izrada ponude" />
+        <ToolbarButton icon={CheckCircle} label="Potvrda prijave" />
+        <ToolbarButton icon={Ticket} label="Voucher" />
+      </ToolbarGroup>
+
+      <ToolbarSeparator />
+
+      {/* Grupa 2 */}
+      <ToolbarGroup>
+        <ToolbarButton icon={LogIn} label="Izrada prijave" />
+      </ToolbarGroup>
+
+      <ToolbarSeparator />
+
+      {/* Grupa 3 */}
+      <ToolbarGroup>
+        <ToolbarButton icon={Ban} label="Storno" danger />
+        <ToolbarButton icon={Trash2} label="Brisanje" danger />
+      </ToolbarGroup>
+
+      <ToolbarSeparator />
+
+      {/* Grupa 4 */}
+      <ToolbarGroup>
+        <ToolbarButton icon={Search} label="Traži" />
+        <ToolbarButton icon={X} label="Odustani" />
+      </ToolbarGroup>
+    </div>
+  );
 }
 
 // ─── Komponenta ──────────────────────────────────────────────────────────────
@@ -49,7 +135,7 @@ export default function RezervacijeClient() {
   const selected = rezervacije.find((r) => r.id === selectedId) ?? null;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
+    <div className="flex flex-col h-full">
       {/* Naslov */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
         <h1 className="text-base font-semibold text-slate-800 tracking-wide">
@@ -204,15 +290,11 @@ export default function RezervacijeClient() {
         )}
       </div>
 
-      {/* Detail panel — rezervirano mjesto */}
-      <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 min-h-[120px]">
+      {/* Canvas — detalji odabrane rezervacije */}
+      <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 min-h-[140px]">
         {selected ? (
-          <div className="text-xs text-slate-500">
-            Detalji rezervacije{" "}
-            <span className="font-semibold text-slate-700">
-              #{selected.redniBroj}
-            </span>{" "}
-            — ovdje dolazi detail panel
+          <div className="text-xs text-slate-400 italic">
+            Detalji rezervacije #{selected.redniBroj} — canvas dolazi ovdje
           </div>
         ) : (
           <div className="text-xs text-slate-400 italic">
@@ -220,6 +302,9 @@ export default function RezervacijeClient() {
           </div>
         )}
       </div>
+
+      {/* Toolbar */}
+      <Toolbar />
     </div>
   );
 }

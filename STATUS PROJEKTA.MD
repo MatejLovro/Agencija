@@ -22,10 +22,11 @@
 form, select, input, label, checkbox, radio-group, textarea,
 dialog, separator, tabs, command, popover, alert-dialog
 
-### Baza — migrirane tablice
+### Baza — migrirane tabele
 
 agencies, cities, landlords, accommodations, pricelist,
-guests, partners, reservations, stays, stays_stavke
+guests, partners, reservations, stays, stays_stavke,
+offers, offers_stavke, taxes, services
 
 ### Seed podaci
 
@@ -45,7 +46,8 @@ guests, partners, reservations, stays, stays_stavke
 - `pricelist.ts` — getPricelistByAccommodation(), createPricelistEntry(),
   updatePricelistEntry(), deletePricelistEntry()
 - `kalendar.ts` — getKalendarData(filtri)
-- `reservations.ts` — getAccommodationWithLandlord(), createReservation()
+- `reservations.ts` — getAccommodationWithLandlord(), createReservation(),
+  getReservations()
 - `partners.ts` — getPartners(), quickCreatePartner()
 
 ### Server Actions (`src/lib/actions/`)
@@ -57,7 +59,8 @@ guests, partners, reservations, stays, stays_stavke
   actionUpdatePricelistEntry, actionDeletePricelistEntry,
   actionGetPricelistByAccommodation, actionGetAccommodationById
 - `kalendar.ts` — actionFetchKalendarData, actionProvjeriMoguceRezerviranje
-- `reservations.ts` — actionGetAccommodationWithLandlord, actionCreateReservation
+- `reservations.ts` — actionGetAccommodationWithLandlord, actionCreateReservation,
+  actionGetReservations
 - `partners.ts` — actionGetPartners, actionQuickCreatePartner
 
 ### Validacije (`src/lib/validations/`)
@@ -83,6 +86,7 @@ guests, partners, reservations, stays, stays_stavke
 - `/iznajmljivaci/novi` — forma za novog iznajmljivača + apartmani + cjenik
 - `/iznajmljivaci/[id]/uredi` — forma za izmjenu + apartmani + cjenik
 - `/kalendar` — Gantt kalendar rezervacija
+- `/rezervacije` — tablica rezervacija s legendom, toolbarom i mjestom za canvas
 
 ### Komponente
 
@@ -96,8 +100,20 @@ guests, partners, reservations, stays, stays_stavke
 - `KalendarFiltriForm.tsx` — filter traka
 - `RezervacijaModal.tsx` — modalna forma za novu rezervaciju
 - `KalendarClient.tsx` — orchestrator kalendara
+- `RezervacijeClient.tsx` — tablica rezervacija s toolbarom
 - `combobox-with-create.tsx` — generički combobox s inline kreiranjem
-  (dorađen: rukovanje greškom, try/catch, prikaz poruke)
+
+### Drizzle sheme (`src/lib/db/schema/`)
+
+- `agencies.ts`, `cities.ts`, `landlords.ts`, `accommodations.ts`,
+  `pricelist.ts`, `guests.ts`, `partners.ts`, `reservations.ts`,
+  `stays.ts`, `stays_stavke.ts`, `offers.ts`, `offers_stavke.ts`,
+  `taxes.ts`, `services.ts`
+
+### Konvencije — terminologija
+
+- **tabela** = tablica u bazi podataka
+- **tablica** = UI grid komponenta
 
 ---
 
@@ -107,24 +123,34 @@ guests, partners, reservations, stays, stays_stavke
 
 - Konteksni izbornik: različite opcije za klik na prazan dan / rezervaciju /
   prijavu (infrastruktura postavljena, logika nije implementirana)
-- Forma za **izradu prijave** (stays) — TODO u handleIzradaPrijave
+- Forma za izradu prijave (stays) — TODO u handleIzradaPrijave
 - Combobox za Grad i Iznajmljivač u filter traci (trenutno null)
 - Hover tooltip na danima preklapanja — lista preklapajućih rezervacija
+
+### Rezervacije — otvorene stavke
+
+- Canvas s detaljima odabrane rezervacije (mjesto rezervirano u UI-u)
+- Funkcionalnost toolbar dugmadi (Izrada ponude, Potvrda prijave, Voucher,
+  Izrada prijave, Storno, Brisanje, Traži, Odustani)
 
 ---
 
 ## PLANIRANO
 
-### Tablica rezervacija (`/rezervacije`)
+### Modul ponuda
 
-- Pregled svih rezervacija
-- Izrada i slanje ponude gostu
+- Izrada ponude iz rezervacije (prompt u pripremi)
+- Izrada ponude za gosta
+- Izrada ponude za partnera
+- Slanje ponude gostu mailom
 - Praćenje statusa plaćanja
 - Pretvaranje rezervacije u prijavu
 
 ### Ostalo
 
 - CRUD stranica za partnere (`/partneri`)
+- CRUD stranica za usluge (`/usluge`)
+- CRUD stranica za poreze (`/porezi`)
 - Modul izvještaja (`/izvjestaji`) — lista apartmana s cjenikom i podacima
   o iznajmljivaču, prikaz na ekranu + PDF export (`@react-pdf/renderer`)
 - Brisanje rezervacija, prijava, iznajmljivača
@@ -136,3 +162,12 @@ guests, partners, reservations, stays, stays_stavke
 
 - Kad se dodaje novi iznajmljivač, modal za apartman ne popunjava automatski
   grad i adresu iznajmljivača (odgođeno)
+
+- Numeracija ponuda i računa mora se resetirati na početku svake kalendarske
+  godine (zakonska obveza). Rješenje: zamijeniti bigserial s kombinacijom
+  godina (smallint) + broj (integer), gdje se broj resetira svake godine.
+  Unique index na (agency_id, godina, broj). Broj se generira u aplikacijskoj
+  logici kao MAX(broj) + 1 za tu godinu. Prikazuje se kao "2025/1".
+  Potrebno primijeniti na tabele: offers, i buduće tabele računa.
+  Tabela offers trenutno ima bigserial — treba migrirati prije prvog
+  produkcijskog korištenja.
