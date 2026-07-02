@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-
+import { useRouter } from "next/navigation";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getRowStyle(row: RezervacijaTableRow): string {
@@ -72,12 +72,28 @@ function ToolbarSeparator() {
   return <div className="w-px h-5 bg-neutral-300/30 mx-1" />;
 }
 
-function Toolbar() {
+// Toolbar prima selectedRow prop
+function Toolbar({ selectedRow }: { selectedRow: RezervacijaTableRow | null }) {
+  const router = useRouter();
+
+  function handleIzradaPonude() {
+    if (!selectedRow) return;
+    if (selectedRow.status === "potvrdjena") {
+      alert("Izabrana rezervacija je već potvrđena.");
+      return;
+    }
+    router.push(`/ponude/nova?rezervacijaId=${selectedRow.id}`);
+  }
+
   return (
     <div className="flex items-center gap-2 flex-wrap px-4 py-2 border-t border-slate-200 bg-slate-50">
       {/* Grupa 1 */}
       <ToolbarGroup>
-        <ToolbarButton icon={FileText} label="Izrada ponude" />
+        <ToolbarButton
+          icon={FileText}
+          label="Izrada ponude"
+          onClick={handleIzradaPonude}
+        />
         <ToolbarButton icon={CheckCircle} label="Potvrda prijave" />
         <ToolbarButton icon={Ticket} label="Voucher" />
       </ToolbarGroup>
@@ -304,7 +320,7 @@ export default function RezervacijeClient() {
       </div>
 
       {/* Toolbar */}
-      <Toolbar />
+      <Toolbar selectedRow={selected} />
     </div>
   );
 }
