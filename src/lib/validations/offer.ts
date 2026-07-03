@@ -12,6 +12,7 @@ export const offerStavkaSchema = z.object({
   taxId: z.string().nullable(),
   taxStopa: z.coerce.number().min(0).default(0),
   bruto: z.coerce.number().min(0),
+  hovered: z.boolean().default(false),
 });
 
 export const offerSchema = z.object({

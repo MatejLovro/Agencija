@@ -193,11 +193,10 @@ function StavkaRow({
   getValues: UseFormGetValues<OfferFormValues>;
   onRemove: () => void;
 }) {
-  const [hovered, setHovered] = useState(false);
-
   // Watch vrijednosti za reaktivan prikaz
   const serviceId = useWatch({ control, name: `stavke.${index}.serviceId` });
   const opisOpen = useWatch({ control, name: `stavke.${index}.opisOpen` });
+  const hovered = useWatch({ control, name: `stavke.${index}.hovered` });
   const kolicina = useWatch({ control, name: `stavke.${index}.kolicina` });
   const cijena = useWatch({ control, name: `stavke.${index}.cijena` });
   const rabat = useWatch({ control, name: `stavke.${index}.rabat` });
@@ -248,14 +247,14 @@ function StavkaRow({
 
   return (
     <>
-      <tr
-        className="border-b last:border-0 hover:bg-muted/20"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
+      <tr className="border-b last:border-0 hover:bg-muted/20">
         {/* NAZIV */}
         <td className="px-3 py-2">
-          <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2"
+            onMouseEnter={() => setValue(`stavke.${index}.hovered`, true)}
+            onMouseLeave={() => setValue(`stavke.${index}.hovered`, false)}
+          >
             <div className="flex-1">
               <ServiceCombobox
                 services={services}
@@ -263,7 +262,6 @@ function StavkaRow({
                 onChange={handleServiceChange}
               />
             </div>
-            {/* ➕ ikona — on hover, samo ako je usluga odabrana */}
             {hovered && serviceId && !opisOpen && (
               <button
                 type="button"
@@ -274,7 +272,6 @@ function StavkaRow({
                 <CirclePlus className="h-4 w-4" />
               </button>
             )}
-            {/* ✖ ikona kad je opis otvoren */}
             {opisOpen && (
               <button
                 type="button"
@@ -287,7 +284,6 @@ function StavkaRow({
             )}
           </div>
 
-          {/* Polje za dodatni opis — expandable */}
           {opisOpen && (
             <DodatniOpisField
               index={index}
@@ -379,12 +375,21 @@ export default function PonudaStavkeTable({
     name: "stavke",
   });
 
+  const stavkeWatch = useWatch({ control, name: "stavke" });
+  const lastServiceId =
+    stavkeWatch.length > 0
+      ? stavkeWatch[stavkeWatch.length - 1].serviceId
+      : null;
+  const canAddRow =
+    stavkeWatch.length === 0 || (!!lastServiceId && lastServiceId !== "");
+
   function handleAddRow() {
     append({
       serviceId: "",
       serviceText: "",
       dodatniOpis: null,
       opisOpen: false,
+      hovered: false,
       kolicina: 1,
       cijena: 0,
       rabat: 0,
@@ -445,6 +450,7 @@ export default function PonudaStavkeTable({
           variant="outline"
           size="sm"
           onClick={handleAddRow}
+          disabled={!canAddRow}
         >
           <Plus className="h-4 w-4 mr-1" />
           Dodaj novi red
