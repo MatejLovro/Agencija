@@ -115,6 +115,39 @@ offers, offers_stavke, taxes, services
 - **tabela** = tablica u bazi podataka
 - **tablica** = UI grid komponenta
 
+### Modul ponuda — temelj
+
+- Ruta `/ponude/nova?rezervacijaId=xxx` — Server Component učitava rezervaciju i usluge
+- Forma za izradu ponude iz rezervacije (`NovaPonudaClient.tsx`)
+- Tablica stavki s lokalnim state upravljanjem (izvan RHF forme)
+- Dugme "Izrada ponude" u `/rezervacije` toolbaru navigira na formu uz provjeru statusa
+- Alert za pokušaj izrade ponude za već potvrđenu rezervaciju
+
+### Komponente — line-items (`src/components/line-items/`)
+
+- `ServiceCombobox.tsx` — combobox s pretragom, odabir usluge, `onAddNew` hook za budući modal
+- `NumberField.tsx` — generički input za brojeve s autoselect on focus (useController)
+- `IznosField.tsx` — read-only prikaz izračunatog iznosa (useController)
+- `PorezField.tsx` — prikaz porezne stope (useController)
+- `DodatniOpisField.tsx` — expandable textarea za opis stavke (useController)
+
+### Baza — migrirane izmjene
+
+- `offers`: uklonjena polja `ponuda_za` i `id_gost`, dodan `predujam_postotak numeric(5,2)`
+- `offers_stavke`: dodana polja `service_text varchar(200)`, `iznos numeric(10,2)`,
+  `bruto numeric(10,2)`, `dodatni_opis text`
+- Seed: 2 poreza (P0 PDV 0%, P13 PDV 13%), 5 usluga (SMJEŠTAJ, BORAVIŠNA PRISTOJBA,
+  BORAVIŠNA PRISTOJBA DO 18 GOD, OSIGURANJE, NAJAM BICIKLA)
+
+### Query sloj i actions
+
+- `lib/db/queries/offers.ts` — `getReservationForOffer()`, `getServicesForOffer()`, `createOffer()`
+- `lib/actions/offers.ts` — `actionGetReservationForOffer`, `actionGetServicesForOffer`, `actionCreateOffer`
+
+### Validacije
+
+- `lib/validations/offer.ts` — `offerSchema`, `offerStavkaSchema`
+
 ---
 
 ## U TIJEKU
@@ -146,6 +179,16 @@ offers, offers_stavke, taxes, services
 - Praćenje statusa plaćanja
 - Pretvaranje rezervacije u prijavu
 
+### Modul ponuda — otvorene stavke
+
+- Modal za dodavanje nove usluge "u hodu" iz ServiceCombobox-a
+- Dugme "Izračunaj smještaj" — algoritam za automatski izračun stavke smještaja iz cjenika
+- Prikaz naziva partnera umjesto ID-a na formi ponude
+- Slanje ponude gostu mailom
+- Praćenje statusa plaćanja ponude
+- Pretvaranje rezervacije u prijavu nakon prihvata ponude
+- Migracija `offers.broj` s bigserial na godina+broj (zakonska obveza) — prije produkcije
+
 ### Ostalo
 
 - CRUD stranica za partnere (`/partneri`)
@@ -157,6 +200,18 @@ offers, offers_stavke, taxes, services
 - Autentikacija (Better Auth)
 
 ---
+
+## POZNATE LEKCIJE
+
+### Ključne tehničke lekcije
+
+- **Focus stabilnost u tablicama s izračunima**: stavke tablice ponude/računa moraju biti
+  u lokalnom `useState`, ne u React Hook Form. `useWatch`/`setValue` u parent komponenti
+  uzrokuje re-render koji ruši fokus na input poljima. `NumericInput` koristi lokalni state
+  i propagira vrijednost prema gore tek na `onBlur`.
+- **Izolacija re-rendera**: svaki `watch` poziv mora biti u izoliranoj podkomponenti
+  (`DatumFields`, `SveukupnoDisplay`, `PredujamFields`) — root forma komponenta ne smije
+  imati nijedan `watch`.
 
 ## POZNATI PROBLEMI / ODGOĐENO
 

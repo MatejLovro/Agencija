@@ -1,9 +1,9 @@
 "use client";
 
-import { useForm, useFieldArray, useWatch } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useEffect, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { offerSchema, type OfferFormValues } from "@/lib/validations/offer";
 import { actionCreateOffer } from "@/lib/actions/offers";
 import type {
@@ -22,13 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import PonudaStavkeTable from "./PonudaStavkeTable";
+import PonudaStavkeTable, { type StavkaRow } from "./PonudaStavkeTable";
+import type { Control, UseFormSetValue } from "react-hook-form";
 
-interface Props {
-  rezervacija: ReservationForOffer;
-  services: ServiceForOffer[];
-  defaultTekstNaDnu: string;
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isoToHr(iso: string): string {
   const [y, m, d] = iso.split("-");
@@ -36,8 +33,9 @@ function isoToHr(iso: string): string {
 }
 
 function hrToIso(hr: string): string {
-  const [d, m, y] = hr.replace(/\./g, "-").split("-");
-  return `${y}-${m}-${d}`;
+  const parts = hr.replace(/\./g, "-").split("-").filter(Boolean);
+  if (parts.length < 3) return hr;
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
 function daysBetween(isoA: string, isoB: string): number {
@@ -56,6 +54,159 @@ function addDays(iso: string, days: number): string {
   return d.toISOString().split("T")[0];
 }
 
+// ─── DatumFields ──────────────────────────────────────────────────────────────
+
+function DatumFields({
+  control,
+  setValue,
+}: {
+  control: Control<OfferFormValues>;
+  setValue: UseFormSetValue<OfferFormValues>;
+}) {
+  const datum = useWatch({ control, name: "datum" });
+  const ponudaVrijedaDana = useWatch({ control, name: "ponudaVrijedaDana" });
+  const doDatuma = useWatch({ control, name: "doDatuma" });
+
+  useEffect(() => {
+    if (datum && ponudaVrijedaDana) {
+      setValue("doDatuma", addDays(datum, ponudaVrijedaDana));
+    }
+  }, [datum, ponudaVrijedaDana, setValue]);
+
+  useEffect(() => {
+    if (datum && doDatuma) {
+      setValue("ponudaVrijedaDana", daysBetween(datum, doDatuma));
+    }
+  }, [doDatuma, datum, setValue]);
+
+  return (
+    <div className="flex items-end gap-4 mb-4">
+      <FormField
+        control={control}
+        name="datum"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Datum ponude</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                autoFocus
+                className="w-36"
+                value={field.value ? isoToHr(field.value) : ""}
+                onChange={(e) => field.onChange(hrToIso(e.target.value))}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="ponudaVrijedaDana"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>&nbsp;</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                className="w-16 text-center"
+                value={field.value ?? ""}
+                onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={control}
+        name="doDatuma"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Vrijedi do</FormLabel>
+            <FormControl>
+              <Input
+                {...field}
+                className="w-36"
+                value={field.value ? isoToHr(field.value) : ""}
+                onChange={(e) => field.onChange(hrToIso(e.target.value))}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
+}
+
+// ─── PredujamFields ───────────────────────────────────────────────────────────
+
+function PredujamFields({
+  control,
+  setValue,
+  sveukupno,
+}: {
+  control: Control<OfferFormValues>;
+  setValue: UseFormSetValue<OfferFormValues>;
+  sveukupno: number;
+}) {
+  const predujamPostotak = useWatch({ control, name: "predujamPostotak" });
+  const predujam = useWatch({ control, name: "predujam" });
+
+  function handlePostotakChange(val: string) {
+    const posto = parseFloat(val);
+    if (!isNaN(posto) && sveukupno > 0) {
+      setValue("predujam", Math.round((posto / 100) * sveukupno * 100) / 100);
+    }
+  }
+
+  function handleIznosChange(val: string) {
+    const iznos = parseFloat(val);
+    if (!isNaN(iznos) && sveukupno > 0) {
+      setValue(
+        "predujamPostotak",
+        Math.round((iznos / sveukupno) * 10000) / 100,
+      );
+    }
+  }
+
+  return (
+    <div className="flex gap-4 items-end">
+      <div>
+        <FormLabel>Predujam %</FormLabel>
+        <Input
+          className="w-28 mt-1"
+          value={predujamPostotak ?? ""}
+          onChange={(e) => {
+            setValue("predujamPostotak", parseFloat(e.target.value) || null);
+            handlePostotakChange(e.target.value);
+          }}
+        />
+      </div>
+      <div>
+        <FormLabel>Predujam iznos</FormLabel>
+        <Input
+          className="w-36 mt-1"
+          value={predujam ?? ""}
+          onChange={(e) => {
+            setValue("predujam", parseFloat(e.target.value) || null);
+            handleIznosChange(e.target.value);
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── NovaPonudaClient ─────────────────────────────────────────────────────────
+
+interface Props {
+  rezervacija: ReservationForOffer;
+  services: ServiceForOffer[];
+  defaultTekstNaDnu: string;
+}
+
 export default function NovaPonudaClient({
   rezervacija,
   services,
@@ -66,11 +217,8 @@ export default function NovaPonudaClient({
   const datumIso = rezervacija.createdAt
     ? rezervacija.createdAt.toISOString().split("T")[0]
     : todayIso();
-
   const doDatumaIso = rezervacija.rezervationValid ?? addDays(datumIso, 2);
-
   const vrijediDana = daysBetween(datumIso, doDatumaIso);
-
   const brojDana = daysBetween(rezervacija.dateFrom, rezervacija.dateTo);
 
   const form = useForm<OfferFormValues>({
@@ -86,61 +234,22 @@ export default function NovaPonudaClient({
     },
   });
 
-  const { control, setValue, getValues, watch } = form;
+  const { control, setValue } = form;
 
-  // Kad se promijeni datum ili vrijediDana → ažuriraj doDatuma
-  const datum = watch("datum");
-  const ponudaVrijedaDana = watch("ponudaVrijedaDana");
+  // Stavke se drže izvan RHF forme
+  const stavkeRef = useRef<StavkaRow[]>([]);
+  const [sveukupno, setSveukupno] = useState(0);
 
-  useEffect(() => {
-    if (datum && ponudaVrijedaDana) {
-      setValue("doDatuma", addDays(datum, ponudaVrijedaDana));
-    }
-  }, [datum, ponudaVrijedaDana, setValue]);
-
-  // Kad se promijeni doDatuma → ažuriraj vrijediDana
-  const doDatuma = watch("doDatuma");
-  useEffect(() => {
-    if (datum && doDatuma) {
-      setValue("ponudaVrijedaDana", daysBetween(datum, doDatuma));
-    }
-  }, [doDatuma, datum, setValue]);
-
-  // Izračun sveukupno iz stavki
-  const stavke = watch("stavke");
-  const sveukupno = stavke.reduce((sum, s) => sum + (Number(s.bruto) || 0), 0);
-
-  // Predujam međuovisnost
-  const predujamPostotak = watch("predujamPostotak");
-  const predujam = watch("predujam");
-
-  const handlePostotakChange = useCallback(
-    (val: string) => {
-      const posto = parseFloat(val);
-      if (!isNaN(posto) && sveukupno > 0) {
-        setValue("predujam", Math.round((posto / 100) * sveukupno * 100) / 100);
-      }
-    },
-    [sveukupno, setValue],
-  );
-
-  const handleIznosChange = useCallback(
-    (val: string) => {
-      const iznos = parseFloat(val);
-      if (!isNaN(iznos) && sveukupno > 0) {
-        setValue(
-          "predujamPostotak",
-          Math.round((iznos / sveukupno) * 10000) / 100,
-        );
-      }
-    },
-    [sveukupno, setValue],
-  );
+  function handleStavkeChange(stavke: StavkaRow[]) {
+    stavkeRef.current = stavke;
+    setSveukupno(stavke.reduce((sum, s) => sum + s.bruto, 0));
+  }
 
   async function onSubmit(values: OfferFormValues) {
-    const stavkeInsert = values.stavke.map((s) => ({
+    const stavkeInsert = stavkeRef.current.map((s) => ({
       serviceId: s.serviceId,
       serviceText: s.serviceText,
+      dodatniOpis: s.dodatniOpis ?? null,
       kolicina: String(s.kolicina),
       cijena: String(s.cijena),
       rabat: String(s.rabat),
@@ -180,66 +289,8 @@ export default function NovaPonudaClient({
           <h2 className="text-base font-semibold mb-3">Ponuda</h2>
           <Separator className="mb-4" />
 
-          {/* Datum ponude | Vrijedi dana | Vrijedi do */}
-          <div className="flex items-end gap-4 mb-4">
-            <FormField
-              control={control}
-              name="datum"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Datum ponude</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      autoFocus
-                      className="w-36"
-                      value={isoToHr(field.value)}
-                      onChange={(e) => field.onChange(hrToIso(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={control}
-              name="ponudaVrijedaDana"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>&nbsp;</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      className="w-16 text-center"
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={control}
-              name="doDatuma"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Vrijedi do</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      className="w-36"
-                      value={field.value ? isoToHr(field.value) : ""}
-                      onChange={(e) => field.onChange(hrToIso(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+          <DatumFields control={control} setValue={setValue} />
 
-          {/* Prezime | Telefon */}
           <div className="grid grid-cols-2 gap-4 mb-2">
             <div>
               <FormLabel>Prezime</FormLabel>
@@ -259,7 +310,6 @@ export default function NovaPonudaClient({
             </div>
           </div>
 
-          {/* Ime | E-mail */}
           <div className="grid grid-cols-2 gap-4 mb-2">
             <div>
               <FormLabel>Ime</FormLabel>
@@ -279,7 +329,6 @@ export default function NovaPonudaClient({
             </div>
           </div>
 
-          {/* Partner */}
           <div className="mb-2">
             <FormLabel>Partner</FormLabel>
             <Input
@@ -338,12 +387,7 @@ export default function NovaPonudaClient({
         </div>
 
         {/* TABLICA STAVKI */}
-        <PonudaStavkeTable
-          control={control}
-          services={services}
-          setValue={setValue}
-          getValues={getValues}
-        />
+        <PonudaStavkeTable services={services} onChange={handleStavkeChange} />
 
         {/* SVEUKUPNO */}
         <div className="flex justify-end">
@@ -358,33 +402,11 @@ export default function NovaPonudaClient({
         </div>
 
         {/* PREDUJAM */}
-        <div className="flex gap-4 items-end">
-          <div>
-            <FormLabel>Predujam %</FormLabel>
-            <Input
-              className="w-28 mt-1"
-              value={predujamPostotak ?? ""}
-              onChange={(e) => {
-                setValue(
-                  "predujamPostotak",
-                  parseFloat(e.target.value) || null,
-                );
-                handlePostotakChange(e.target.value);
-              }}
-            />
-          </div>
-          <div>
-            <FormLabel>Predujam iznos</FormLabel>
-            <Input
-              className="w-36 mt-1"
-              value={predujam ?? ""}
-              onChange={(e) => {
-                setValue("predujam", parseFloat(e.target.value) || null);
-                handleIznosChange(e.target.value);
-              }}
-            />
-          </div>
-        </div>
+        <PredujamFields
+          control={control}
+          setValue={setValue}
+          sveukupno={sveukupno}
+        />
 
         {/* TEKST NA DNU */}
         <FormField
