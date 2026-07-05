@@ -302,3 +302,36 @@ type KalendarFiltri = {
   samoPrioritetan;
 };
 ```
+
+## MODUL PONUDA
+
+### Arhitektura forme za izradu ponude
+
+- Ruta: `/ponude/nova?rezervacijaId=xxx`
+- Server Component učitava rezervaciju i usluge, prosljeđuje u `NovaPonudaClient`
+- Header forme (datumi, podaci gosta) u RHF formi
+- Stavke su **izvan RHF forme** — lokalni `useState` u `PonudaStavkeTable`
+- `NumericInput` koristi lokalni state, propagira vrijednost na `onBlur`
+- Submit čita stavke iz `useRef` (ne iz RHF forme)
+
+### Ključno pravilo — fokus u tablicama
+
+Svaki `watch`/`useWatch` u parent komponenti uzrokuje re-render koji ruši
+fokus na input poljima. Pravilo:
+
+- Stavke tablice = lokalni `useState`, nikad `useFieldArray`
+- Kalkulirana polja (sveukupno, predujam) = izolirane podkomponente s vlastitim `useWatch`
+- Root forma komponenta ne smije imati nijedan `watch` poziv
+
+### PDF generiranje
+
+- Biblioteka: `@react-pdf/renderer`
+- API ruta: `/api/ponude/[id]/pdf` — server-side render, vraća PDF buffer
+- PDF komponenta: `src/components/pdf/PonudaPdf.tsx`
+- Logotip: `/public/logo.png` (budući SaaS: `logo_url` u tablici `agencies`)
+- Podaci agencije: hardkodirani u `PonudaPdf.tsx` (budući SaaS: iz tablice `agencies`)
+
+### Tabele potrebne za modul ponuda
+
+`offers`, `offers_stavke`, `services`, `taxes`, `reservations`,
+`accommodations`, `landlords`, `partners`, `cities`

@@ -19,6 +19,11 @@ export default function PonudeClient({ ponude }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = ponude.find((p) => p.id === selectedId) ?? null;
 
+  function handleIspisj() {
+    if (!selected) return;
+    window.open(`/api/ponude/${selected.id}/pdf`, "_blank");
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Naslov */}
@@ -142,7 +147,12 @@ export default function PonudeClient({ ponude }: Props) {
 
       {/* Dugmad */}
       <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex gap-3">
-        <Button variant="default" size="sm" disabled={!selected}>
+        <Button
+          variant="default"
+          size="sm"
+          disabled={!selected}
+          onClick={handleIspisj}
+        >
           <Printer className="h-4 w-4 mr-1" />
           Ispiši
         </Button>

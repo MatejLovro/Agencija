@@ -7,6 +7,7 @@ import { landlords } from "@/lib/db/schema/landlords";
 import { services } from "@/lib/db/schema/services";
 import { taxes } from "@/lib/db/schema/taxes";
 import { partners } from "@/lib/db/schema/partners";
+import { cities } from "@/lib/db/schema/cities";
 import { eq, and, desc, inArray } from "drizzle-orm";
 
 // Tip koji vraćamo za prikaz rezervacije na formi p  onude
@@ -217,4 +218,103 @@ export async function getOffers(agencyId: string): Promise<OfferTableRow[]> {
     ...r,
     cijena: cijeneMap.get(r.id) ?? 0,
   }));
+}
+
+export type OfferStavkaPdf = {
+  id: string;
+  serviceText: string;
+  dodatniOpis: string | null;
+  jedMjere: string | null;
+  kolicina: string;
+  cijena: string;
+  rabat: string;
+  iznos: string;
+  bruto: string;
+};
+
+export type OfferForPdf = {
+  id: string;
+  broj: number;
+  datum: string;
+  doDatuma: string | null;
+  predujam: string | null;
+  rezervacijaBroj: number;
+  guestSurname: string;
+  guestName: string;
+  guestEmail: string | null;
+  partnerNaziv: string | null;
+  partnerAdresa: string | null;
+  partnerGrad: string | null;
+  partnerOib: string | null;
+  partnerEmail: string | null;
+  landlordSurname: string;
+  landlordName: string;
+  accommodationName: string;
+  dateFrom: string;
+  dateTo: string;
+  tekstNaDnu: string | null;
+  stavke: OfferStavkaPdf[];
+};
+
+export async function getOfferForPdf(
+  offerId: string,
+  agencyId: string,
+): Promise<OfferForPdf | null> {
+  const rows = await db
+    .select({
+      id: offers.id,
+      broj: offers.broj,
+      datum: offers.datum,
+      doDatuma: offers.doDatuma,
+      predujam: offers.predujam,
+      tekstNaDnu: offers.tekstNaDnu,
+      rezervacijaBroj: reservations.redniBroj,
+      guestSurname: reservations.guestSurname,
+      guestName: reservations.guestName,
+      guestEmail: reservations.email,
+      partnerNaziv: partners.name,
+      partnerAdresa: partners.address,
+      partnerGrad: cities.name,
+      partnerOib: partners.oib,
+      partnerEmail: partners.email,
+      landlordSurname: landlords.surname,
+      landlordName: landlords.name,
+      accommodationName: accommodations.name,
+      dateFrom: reservations.dateFrom,
+      dateTo: reservations.dateTo,
+    })
+    .from(offers)
+    .innerJoin(reservations, eq(offers.idRezervacija, reservations.id))
+    .innerJoin(
+      accommodations,
+      eq(reservations.accommodationId, accommodations.id),
+    )
+    .innerJoin(landlords, eq(accommodations.landlordId, landlords.id))
+    .leftJoin(partners, eq(reservations.partnerId, partners.id))
+    .leftJoin(cities, eq(partners.cityId, cities.id))
+    .where(and(eq(offers.id, offerId), eq(offers.agencyId, agencyId)))
+    .limit(1);
+
+  if (!rows[0]) return null;
+
+  const stavkeRows = await db
+    .select({
+      id: offersStavke.id,
+      serviceText: offersStavke.serviceText,
+      dodatniOpis: offersStavke.dodatniOpis,
+      jedMjere: services.jedMjere,
+      kolicina: offersStavke.kolicina,
+      cijena: offersStavke.cijena,
+      rabat: offersStavke.rabat,
+      iznos: offersStavke.iznos,
+      bruto: offersStavke.bruto,
+    })
+    .from(offersStavke)
+    .innerJoin(services, eq(offersStavke.serviceId, services.id))
+    .where(eq(offersStavke.offerId, offerId));
+
+  return {
+    ...rows[0],
+    stavke: stavkeRows,
+  };
 }

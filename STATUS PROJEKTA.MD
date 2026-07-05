@@ -148,6 +148,47 @@ offers, offers_stavke, taxes, services
 
 - `lib/validations/offer.ts` — `offerSchema`, `offerStavkaSchema`
 
+### Modul ponuda — osnova
+
+- Ruta `/ponude/nova?rezervacijaId=xxx` — izrada ponude iz rezervacije
+- `NovaPonudaClient.tsx` — forma za izradu ponude
+- Tablica stavki s lokalnim useState (izvan RHF forme) — `PonudaStavkeTable.tsx`
+- `NumericInput` s lokalnim state i propagacijom na onBlur — rješava problem gubitka fokusa
+- Dugme "Izrada ponude" u `/rezervacije` toolbaru s provjerom statusa rezervacije
+- Ruta `/ponude` — tablica svih ponuda s odabirom retka
+- PDF generiranje ponude — `@react-pdf/renderer`, API ruta `/api/ponude/[id]/pdf`
+- PDF komponenta `PonudaPdf.tsx` — header agencije, logotip, podaci kupca,
+  tablica stavki, suma
+- Dugme "Ispiši" otvara PDF u novom tabu
+
+### Komponente — line-items (`src/components/line-items/`)
+
+- `ServiceCombobox.tsx` — combobox s pretragom, `onAddNew` hook za budući modal
+- `NumberField.tsx` — generički input za brojeve (useController)
+- `IznosField.tsx` — read-only prikaz iznosa (useController)
+- `PorezField.tsx` — prikaz porezne stope (useController)
+- `DodatniOpisField.tsx` — expandable textarea za opis stavke (useController)
+
+### Baza — izmjene
+
+- `offers`: uklonjena `ponuda_za` i `id_gost`, dodani `predujam_postotak`,
+  `poslana boolean`
+- `offers_stavke`: dodani `service_text`, `iznos`, `bruto`, `dodatni_opis`
+- Seed: 2 poreza (P0 PDV 0%, P13 PDV 13%), 5 usluga
+
+### Query sloj
+
+- `getReservationForOffer()`, `getServicesForOffer()`, `createOffer()`
+- `getOffers()` — lista ponuda s izračunatom cijenom (zbroj bruto stavki)
+- `getOfferForPdf()` — ponuda s stavkama za PDF generiranje
+
+### Ključne tehničke lekcije
+
+- Stavke tablice ponude/računa moraju biti u lokalnom `useState`, ne u RHF
+- `useWatch` u root komponenti re-renderira cijelo stablo i ruši fokus
+- Svaki `watch` mora biti u izoliranoj podkomponenti
+- Neon HTTP driver ne podržava transakcije — koristimo sekvencijalni insert
+
 ---
 
 ## U TIJEKU
@@ -170,24 +211,19 @@ offers, offers_stavke, taxes, services
 
 ## PLANIRANO
 
-### Modul ponuda
+### Evidencija uplata
 
-- Izrada ponude iz rezervacije (prompt u pripremi)
-- Izrada ponude za gosta
-- Izrada ponude za partnera
-- Slanje ponude gostu mailom
-- Praćenje statusa plaćanja
-- Pretvaranje rezervacije u prijavu
+- Evidentiranje uplate po ponudi
+- Potvrda rezervacije nakon uplate
+- Slanje vouchera gostu
 
 ### Modul ponuda — otvorene stavke
 
 - Modal za dodavanje nove usluge "u hodu" iz ServiceCombobox-a
-- Dugme "Izračunaj smještaj" — algoritam za automatski izračun stavke smještaja iz cjenika
+- Dugme "Izračunaj smještaj" — automatski izračun iz cjenika
 - Prikaz naziva partnera umjesto ID-a na formi ponude
-- Slanje ponude gostu mailom
-- Praćenje statusa plaćanja ponude
-- Pretvaranje rezervacije u prijavu nakon prihvata ponude
-- Migracija `offers.broj` s bigserial na godina+broj (zakonska obveza) — prije produkcije
+- Slanje ponude mailom (mailto: + ručni attachment)
+- Numeracija ponuda: godina+broj umjesto bigserial — prije produkcije
 
 ### Ostalo
 

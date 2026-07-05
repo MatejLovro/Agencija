@@ -9,6 +9,7 @@ import {
   type OfferStavkaInsert,
 } from "@/lib/db/queries/offers";
 import { getOffers } from "@/lib/db/queries/offers";
+import { getOfferForPdf } from "@/lib/db/queries/offers";
 
 const AGENCY_ID = process.env.AGENCY_ID!;
 
@@ -32,4 +33,8 @@ export async function actionCreateOffer(
 
 export async function actionGetOffers() {
   return await getOffers(AGENCY_ID);
+}
+
+export async function actionGetOfferForPdf(offerId: string) {
+  return await getOfferForPdf(offerId, AGENCY_ID);
 }
