@@ -6,9 +6,10 @@ import { accommodations } from "@/lib/db/schema/accommodations";
 import { landlords } from "@/lib/db/schema/landlords";
 import { services } from "@/lib/db/schema/services";
 import { taxes } from "@/lib/db/schema/taxes";
-import { eq, and } from "drizzle-orm";
+import { partners } from "@/lib/db/schema/partners";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
-// Tip koji vraćamo za prikaz rezervacije na formi ponude
+// Tip koji vraćamo za prikaz rezervacije na formi p  onude
 export type ReservationForOffer = {
   id: string;
   guestSurname: string;
@@ -38,6 +39,7 @@ export type ServiceForOffer = {
 export type OfferStavkaInsert = {
   offerId: string;
   serviceId: string;
+  dodatniOpis: string | null;
   serviceText: string;
   kolicina: string;
   cijena: string;
@@ -123,21 +125,96 @@ export async function createOffer(
   offer: OfferInsert,
   stavke: Omit<OfferStavkaInsert, "offerId">[],
 ): Promise<string> {
-  return await db.transaction(async (tx) => {
-    const [newOffer] = await tx
-      .insert(offers)
-      .values(offer)
-      .returning({ id: offers.id });
+  const [newOffer] = await db
+    .insert(offers)
+    .values(offer)
+    .returning({ id: offers.id });
 
-    if (stavke.length > 0) {
-      await tx.insert(offersStavke).values(
-        stavke.map((s) => ({
-          ...s,
-          offerId: newOffer.id,
-        })),
-      );
-    }
+  if (stavke.length > 0) {
+    await db.insert(offersStavke).values(
+      stavke.map((s) => ({
+        ...s,
+        offerId: newOffer.id,
+      })),
+    );
+  }
 
-    return newOffer.id;
-  });
+  return newOffer.id;
+}
+
+export type OfferTableRow = {
+  id: string;
+  broj: number;
+  datum: string;
+  doDatuma: string | null;
+  ponudaVrijedaDana: number | null;
+  predujam: string | null;
+  poslana: boolean;
+  rezervacijaBroj: number;
+  guestSurname: string;
+  guestName: string;
+  partnerNaziv: string | null;
+  landlordSurname: string;
+  landlordName: string;
+  accommodationName: string;
+  dateFrom: string;
+  dateTo: string;
+  cijena: number;
+};
+
+export async function getOffers(agencyId: string): Promise<OfferTableRow[]> {
+  const rows = await db
+    .select({
+      id: offers.id,
+      broj: offers.broj,
+      datum: offers.datum,
+      doDatuma: offers.doDatuma,
+      ponudaVrijedaDana: offers.ponudaVrijedaDana,
+      predujam: offers.predujam,
+      poslana: offers.poslana,
+      rezervacijaBroj: reservations.redniBroj,
+      guestSurname: reservations.guestSurname,
+      guestName: reservations.guestName,
+      partnerNaziv: partners.name,
+      landlordSurname: landlords.surname,
+      landlordName: landlords.name,
+      accommodationName: accommodations.name,
+      dateFrom: reservations.dateFrom,
+      dateTo: reservations.dateTo,
+    })
+    .from(offers)
+    .innerJoin(reservations, eq(offers.idRezervacija, reservations.id))
+    .innerJoin(
+      accommodations,
+      eq(reservations.accommodationId, accommodations.id),
+    )
+    .innerJoin(landlords, eq(accommodations.landlordId, landlords.id))
+    .leftJoin(partners, eq(reservations.partnerId, partners.id))
+    .where(eq(offers.agencyId, agencyId))
+    .orderBy(desc(offers.broj));
+
+  // Dohvati cijene (zbroj bruto stavki) za svaku ponudu
+  const offerIds = rows.map((r) => r.id);
+
+  if (offerIds.length === 0) return [];
+
+  const stavkeRows = await db
+    .select({
+      offerId: offersStavke.offerId,
+      bruto: offersStavke.bruto,
+    })
+    .from(offersStavke)
+    .where(inArray(offersStavke.offerId, offerIds));
+
+  // Zbroji bruto po offerId
+  const cijeneMap = new Map<string, number>();
+  for (const s of stavkeRows) {
+    const prev = cijeneMap.get(s.offerId) ?? 0;
+    cijeneMap.set(s.offerId, prev + parseFloat(s.bruto ?? "0"));
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    cijena: cijeneMap.get(r.id) ?? 0,
+  }));
 }

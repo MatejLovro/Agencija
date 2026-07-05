@@ -230,7 +230,6 @@ export default function NovaPonudaClient({
       predujamPostotak: null,
       predujam: null,
       tekstNaDnu: defaultTekstNaDnu,
-      stavke: [],
     },
   });
 
@@ -246,6 +245,11 @@ export default function NovaPonudaClient({
   }
 
   async function onSubmit(values: OfferFormValues) {
+    if (stavkeRef.current.length === 0) {
+      alert("Dodaj barem jednu stavku.");
+      return;
+    }
+
     const stavkeInsert = stavkeRef.current.map((s) => ({
       serviceId: s.serviceId,
       serviceText: s.serviceText,
@@ -275,13 +279,16 @@ export default function NovaPonudaClient({
       stavkeInsert,
     );
 
-    router.push("/rezervacije");
+    router.push("/ponude");
   }
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        // onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          console.log("Validation errors:", errors);
+        })}
         className="space-y-6 p-6 max-w-5xl mx-auto"
       >
         {/* SEKCIJA: PONUDA */}
@@ -429,11 +436,11 @@ export default function NovaPonudaClient({
 
         {/* GUMBI */}
         <div className="flex gap-3">
-          <Button type="submit">Spremi i pošalji</Button>
+          <Button type="submit">Spremi</Button>
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/rezervacije")}
+            onClick={() => router.push("/ponude")}
           >
             Odustani
           </Button>

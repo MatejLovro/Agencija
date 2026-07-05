@@ -27,6 +27,7 @@ const menuItems = [
     children: [
       { href: "/kalendar", label: "Kalendar" },
       { href: "/rezervacije", label: "Pregled rezervacija" },
+      { href: "/ponude", label: "Pregled ponuda" },
     ],
   },
   {

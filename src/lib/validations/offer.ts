@@ -22,7 +22,6 @@ export const offerSchema = z.object({
   predujamPostotak: z.coerce.number().min(0).max(100).nullable(),
   predujam: z.coerce.number().min(0).nullable(),
   tekstNaDnu: z.string().nullable(),
-  stavke: z.array(offerStavkaSchema).min(1, "Dodaj barem jednu stavku"),
 });
 
 export type OfferFormValues = z.infer<typeof offerSchema>;

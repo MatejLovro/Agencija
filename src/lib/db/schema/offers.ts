@@ -6,6 +6,7 @@ import {
   numeric,
   text,
   timestamp,
+  boolean,
   bigserial,
 } from "drizzle-orm/pg-core";
 import { agencies } from "./agencies";
@@ -30,6 +31,7 @@ export const offers = pgTable("offers", {
   predujam: numeric("predujam", { precision: 10, scale: 2 }),
   predujamPostotak: numeric("predujam_postotak", { precision: 5, scale: 2 }),
   tekstNaDnu: text("tekst_na_dnu"),
+  poslana: boolean("poslana").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

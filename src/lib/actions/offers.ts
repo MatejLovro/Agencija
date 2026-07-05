@@ -8,6 +8,7 @@ import {
   type OfferInsert,
   type OfferStavkaInsert,
 } from "@/lib/db/queries/offers";
+import { getOffers } from "@/lib/db/queries/offers";
 
 const AGENCY_ID = process.env.AGENCY_ID!;
 
@@ -27,4 +28,8 @@ export async function actionCreateOffer(
   revalidatePath("/rezervacije");
   revalidatePath("/ponude");
   return { offerId };
+}
+
+export async function actionGetOffers() {
+  return await getOffers(AGENCY_ID);
 }
