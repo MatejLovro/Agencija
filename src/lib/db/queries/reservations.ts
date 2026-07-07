@@ -5,6 +5,7 @@ import { accommodations } from "@/lib/db/schema/accommodations";
 import { landlords } from "@/lib/db/schema/landlords";
 import { stays } from "@/lib/db/schema/stays";
 import { eq, desc } from "drizzle-orm";
+import { offers } from "@/lib/db/schema/offers";
 
 // ─── Dohvat apartmana + iznajmljivača za prikaz na formi rezervacije ───────
 
@@ -15,6 +16,15 @@ export type AccommodationWithLandlord = {
   landlordSurname: string;
   landlordName: string;
   landlordPhone: string | null;
+};
+
+export type RezervacijaComboboxOption = {
+  id: string;
+  redniBroj: number;
+  guestName: string;
+  guestSurname: string;
+  dateFrom: string;
+  predujam: string | null;
 };
 
 export async function getAccommodationWithLandlord(
@@ -157,4 +167,26 @@ export async function getReservations(
     children: row.children,
     price: row.price,
   }));
+}
+
+// Returns only reservations that have at least one offer, together with the
+// predujam (advance payment) from the most recent offer (by createdAt).
+// Used for the /unos_izvoda combobox — a guest without an offer never received
+// payment instructions, so such reservations are irrelevant here.
+export async function getReservationsForCombobox(
+  agencyId: string,
+): Promise<RezervacijaComboboxOption[]> {
+  return db
+    .selectDistinctOn([reservations.id], {
+      id: reservations.id,
+      redniBroj: reservations.redniBroj,
+      guestName: reservations.guestName,
+      guestSurname: reservations.guestSurname,
+      dateFrom: reservations.dateFrom,
+      predujam: offers.predujam,
+    })
+    .from(reservations)
+    .innerJoin(offers, eq(offers.idRezervacija, reservations.id))
+    .where(eq(reservations.agencyId, agencyId))
+    .orderBy(reservations.id, desc(offers.createdAt));
 }

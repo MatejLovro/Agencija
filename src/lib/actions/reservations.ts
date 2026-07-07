@@ -18,6 +18,11 @@ import {
 import { actionProvjeriMoguceRezerviranje } from "@/lib/actions/kalendar";
 import { revalidatePath } from "next/cache";
 
+import {
+  getReservationsForCombobox,
+  RezervacijaComboboxOption,
+} from "@/lib/db/queries/reservations";
+
 // ─── Dohvat podataka o apartmanu/iznajmljivaču ──────────────────────────────
 
 export async function actionGetAccommodationWithLandlord(
@@ -100,4 +105,10 @@ export async function actionCreateReservation(
 
 export async function actionGetReservations(): Promise<RezervacijaTableRow[]> {
   return getReservations(process.env.AGENCY_ID!);
+}
+
+export async function actionGetReservationsForCombobox(): Promise<
+  RezervacijaComboboxOption[]
+> {
+  return getReservationsForCombobox(process.env.AGENCY_ID!);
 }
