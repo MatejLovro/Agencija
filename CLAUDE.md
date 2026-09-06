@@ -1,337 +1,238 @@
 # CLAUDE.md — Aplikacija za turističku agenciju
 
-## O PROJEKTU
+Ovo je kratki ulazni dokument za Claude Code.
 
-Web aplikacija za turističku agenciju koja se bavi posredovanjem u iznajmljivanju
-smještaja u ime i za račun malih privatnih iznajmljivača. Agencija pronalazi smještaj
-prema željama gosta, šalje ponudu, prima uplatu i obavlja rezervaciju.
+Detaljna projektna dokumentacija nalazi se u `docs/`.
 
-Aplikacija je namijenjena isključivo djelatnicima agencije (interna aplikacija,
-nije javna). Multi-tenant arhitektura — agencija se identificira preko `AGENCY_ID`
-env varijable.
+Ne učitavaj svu dokumentaciju automatski. Pročitaj samo dokumente relevantne za zadatak na kojem trenutno radiš.
 
----
+## Projekt
 
-## TECH STACK
+Web aplikacija za turističke agencije koje posreduju u iznajmljivanju privatnog smještaja.
 
-- **Framework:** Next.js 15+ (App Router)
-- **Baza podataka:** Neon PostgreSQL (cloud, dijeljena između dva računala)
-- **ORM:** Drizzle ORM (migracije često primjenjivane ručno preko Neon SQL Editora)
-- **UI:** shadcn/ui (stil: radix-nova, Neutral base color)
-- **Validacija:** Zod v4 + React Hook Form + @hookform/resolvers
-- **PDF:** @react-pdf/renderer (odabran za Vercel kompatibilnost)
-- **OS:** Windows (dva računala — kuća i posao)
+Trenutno aplikacija radi za jednu agenciju identificiranu preko:
 
----
-
-## ENV VARIJABLE
-
+```text
+AGENCY_ID
 ```
-AGENCY_ID=3ab285b4-6f7c-4b26-a74a-732d121df90a
+
+Dugoročni cilj je **multi-tenant SaaS aplikacija za više turističkih agencija**.
+
+Glavni poslovni tijek:
+
+```text
+upit gosta
+→ pretraga smještaja
+→ rezervacija
+→ ponuda
+→ uplata
+→ potvrda rezervacije
+→ voucher
+→ prijava / stay
+→ eVisitor
+→ odjava
+→ račun gostu u ime iznajmljivača
+→ fiskalizacija / eRačun gdje je primjenjivo
+→ obračun provizije
+→ račun iznajmljivaču
+→ izvještaji
+```
+
+Širi poslovni kontekst:
+
+```text
+docs/project-overview.md
+```
+
+## Tech stack
+
+```text
+Next.js 15+ / App Router
+React
+TypeScript
+Tailwind CSS
+shadcn/ui
+Drizzle ORM
+PostgreSQL / Neon
+Zod v4
+React Hook Form
+@hookform/resolvers
+@react-pdf/renderer
+fast-xml-parser
+```
+
+Autentikacija:
+
+```text
+Better Auth — planirano
+```
+
+## Env varijable
+
+```text
+AGENCY_ID=<uuid agencije>
 NEXT_PUBLIC_CALENDAR_DAYS_BEFORE=6
 NEXT_PUBLIC_CALENDAR_DAYS_AFTER=45
 NEXT_PUBLIC_RESERVATION_VALID_DAYS=3
 UNKNOWN_CITY_ID=10
 ```
 
----
+## Projektna dokumentacija
 
-## ARHITEKTURALNA NAČELA
+### Poslovni kontekst
 
-- Next.js ima dvostruku ulogu: web sučelje i backend API
-- **DB logika striktno odvojena od transportnog sloja** — Server Actions i API rute
-  ne smiju direktno sadržavati Drizzle upite; queries idu u `lib/db/queries/`
-- Biblioteke se instaliraju tek kada su potrebne
-- `grep` nije dostupan na Windowsu
-
----
-
-## ORGANIZACIJA DATOTEKA
-
-```
-src/
-├── app/
-│   ├── (auth)/
-│   └── (dashboard)/
-│       ├── iznajmljivaci/
-│       ├── kalendar/
-│       └── rezervacije/           ← planira se
-│
-├── components/
-│   ├── ui/                        ← shadcn/ui komponente
-│   ├── iznajmljivaci/
-│   └── kalendar/
-│
-├── lib/
-│   ├── db/
-│   │   ├── schema/
-│   │   ├── queries/
-│   │   └── index.ts
-│   ├── actions/
-│   ├── validations/
-│   ├── mock/                      ← privremeni mock podaci
-│   └── utils/
-│
-└── types/
+```text
+docs/project-overview.md
 ```
 
----
+Svrha aplikacije, terminologija, glavni entiteti, poslovni workflow i cross-module pravila.
 
-## KONVENCIJE
+### Development pravila
 
-- Jezik sučelja: **hrvatski**; kod i komentari: **engleski**
-- Nazivi datoteka i ruta: **kebab-case**
-- Komponente: **PascalCase**
-- Nazivi varijabli: **bez hrvatskih dijakritičkih znakova**
-- Server Actions: prefiks `action` (npr. `actionCreateReservation`)
-- Query funkcije: prefiks prema operaciji (`getX`, `createX`, `updateX`, `deleteX`)
-
----
-
-## KONVENCIJE — FORME I VALIDACIJA
-
-- **Zod v4** — NE koristiti `required_error` ni `invalid_type_error`
-- Obavezna string polja: `.min(1, "poruka")`
-- Opcionalna string polja: `.optional().or(z.literal(""))`
-- `discriminatedUnion` workaround za react-hook-form 7.76:
-  `resolver: zodResolver(schema) as any`
-- `useForm` ne reinicijalizira pri promjeni `defaultValues` — koristiti
-  `useEffect` na `[open, defaultValues]`
-- `autoComplete="off"` na formi + randomizirani `name` atribut na osjetljivim
-  poljima za suzbijanje browser autocomplete-a
-
-### Datumska polja
-
-- Hrvatski format `dd.mm.gggg.` s auto-formatiranjem dok korisnik tipka
-- **NE** koristiti browser date picker
-- Backend prima ISO string; konverzija ide u `lib/utils/dates.ts`
-- Helperi: `parseHrDate()`, `validateDatumRodjenja()`, `isoToHrDate()`, `hrDateToIso()`
-
-### Combobox pattern (`ComboboxWithCreate`)
-
-- Lokacija: `src/components/ui/combobox-with-create.tsx`
-- Props: `value`, `onChange`, `options`, `onCreate`, `entityLabel`, `placeholder`, `disabled`
-- `onCreate: (name: string) => Promise<{ id, name } | null | undefined>`
-- Komponenta rukuje greškom: prikazuje poruku ispod inputa ako `onCreate` vrati
-  `null` ili baci iznimku
-- "Add new..." dugme je fiksno izvan `CommandList`, koristi `onMouseDown` +
-  `e.preventDefault()` da ne zatvori popover
-
----
-
-## KONVENCIJE — DRAW.IO MOCKUPI
-
-- Bijeli fill, solid border = input polja
-- Žuti fill, dashed border = izračunata polja
-- Sivi fill, bez bordera = read-only relacijski podaci
-- Plavi border = combobox / FK polja
-
----
-
-## BAZA PODATAKA — SHEME
-
-### `agencies`
-
-Jedan tenant za sada. Svaki entitet nosi `agency_id` FK radi buduće SaaS ekspanzije.
-
-### `cities`
-
-`id` (serial), `name`, `zip`. `id=10` = grad "Nepoznato" (placeholder za brzi unos partnera).
-
-### `landlords`
-
-Iznajmljivači. Enum `vrsta_iznajmljivaca`: `fizicka_osoba`, `fizicka_osoba_pdv`,
-`obrt`, `tvrtka`. Enum `tip_provizije`: `P` (postotak), `I` (iznos).
-Composite unique index: `(agency_id, oib)`.
-
-### `accommodations`
-
-~40 polja: osnovno, kapacitet, status, opis, amenities (klima, parking, wifi...),
-lokacija/aktivnosti, katastarski podaci. `name` = kratki naziv (prikazuje se u
-kalendaru), `full_name` = dugi naziv.
-
-### `pricelist`
-
-`accommodation_id`, `date_from`, `date_to`, `price_per_night`, `landlord_price`.
-Nema `agency_id` — nasljeđuje se kroz apartman.
-
-### `guests`
-
-Registrirani gosti s punim podacima (potrebni za stays/prijave).
-`state_birth` i `citizenship` koriste ISO 3166-1 alpha-3 (npr. `HRV`, `DEU`).
-
-### `partners`
-
-Booking kanali i partnerske agencije (Booking.com, Airbnb, strane agencije).
-Brzi inline unos: samo `name`, ostalo dobiva placeholder vrijednosti:
-`type='firma'`, `oib='00000000000'`, `state='HRV'`, `pdvStatus='not_pdv'`,
-`iban=''`, `address=''`, `cityId=10` (UNKNOWN_CITY_ID).
-
-### `reservations`
-
-- `redni_broj` — bigserial, auto-inkrement, sekvencionalni br. rezervacije (npr. "700")
-- `guest_name`, `guest_surname` — plain text (nije FK na guests; nepotvrđene
-  rezervacije ne zahtijevaju punu registraciju gosta)
-- `status` — enum: `nepotvrdjena` | `potvrdjena`
-- `rezervation_valid` — datum do kada vrijedi ponuda
-- `partner_id` — nullable FK na `partners`
-- `price`, `avans_percent`, `avans_amount` — trenutno nekorištena polja
-
-### `stays`
-
-- `redni_broj` — bigserial, auto-inkrement (prikazuje se kao npr. "P699")
-- `reservation_id` — nullable FK na `reservations` (null = walk-in gost)
-- `guest_id` — NOT NULL FK na `guests`
-- `status` — enum: `aktivna` | `odjavljena`
-
-### `stays_stavke`
-
-Pojedinačne osobe unutar grupnog boravka, svaka s vlastitim datumima,
-eVisitor kategorijom i opcionalnim datumom dozvole boravka.
-
----
-
-## DOMENSKA LOGIKA
-
-### Tijek procesa
-
-1. Gost kontaktira agenciju
-2. Djelatnik pretražuje slobodne apartmane
-3. Agencija gostu šalje ponudu
-4. Gost uplaćuje (polog ili cijeli iznos)
-5. Agencija potvrđuje rezervaciju
-6. Gost dolazi → rezervacija postaje prijava (stay)
-7. Agencija izdaje račun gostu (u ime iznajmljivača)
-8. Agencija izdaje račun iznajmljivaču za proviziju
-
-### Pravila preklapanja — prijave i rezervacije
-
-**Prijave (stays):**
-
-- Apartman zauzet sve dok se prijava ne zatvori (odjava)
-- Sljedeća prijava moguća samo od zadnjeg dana prethodne (checkout ujutro,
-  check-in popodne istog dana) — max 1 dan preklapanja
-
-**Rezervacije:**
-
-- Može postojati više konkurentskih rezervacija za isti period (normalno
-  poslovno stanje — agencija potvrđuje onu koja prva uplati)
-- Preklapanje može trajati više dana — nije greška
-
-**Validacija perioda rezervacije** (`lib/utils/kalendarValidacija.ts`):
-
-- Blokira ako postoji **prijava** koja se preklapa (strogo unutarnja provjera:
-  `stay.dateFrom < do AND stay.dateTo > od`)
-- Blokira ako postoji **potvrđena rezervacija** koja se preklapa
-- Dopušta nepotvrđene konkurentske rezervacije
-- Rubni dan (checkout = checkin) uvijek dozvoljen
-- Provjera se poziva **dvaput**: prije otvaranja forme + prije spremanja (race
-  condition zaštita)
-
-### Datum "Vrijedi do" na rezervaciji
-
-- Default = danas + `NEXT_PUBLIC_RESERVATION_VALID_DAYS`
-- Iznimka: ako je `dateFrom − danas <= NEXT_PUBLIC_RESERVATION_VALID_DAYS`,
-  tada `vrijediDo = danas`
-- Uvijek mora biti `< dateFrom`
-- Editabilno — korisnik može ručno promijeniti
-
----
-
-## KALENDAR — ARHITEKTURA
-
-### Prikaz
-
-Gantt dijagram: sticky lijevi stupci (iznajmljivač + kapacitet), horizontalni
-scroll za datume. Zeleni header stupac = danas.
-
-### Boje
-
-| Tip                     | Boja                            |
-| ----------------------- | ------------------------------- |
-| Prijava                 | Zelena (`bg-emerald-500`)       |
-| Rezervacija potvrđena   | Žuta (`bg-amber-300`)           |
-| Rezervacija nepotvrđena | Svjetlo žuta (`bg-yellow-100`)  |
-| Dan preklapanja         | Narančasta (`bg-orange-400`)    |
-| Danas (prazan dan)      | Nježno zelena (`bg-emerald-50`) |
-| Vikend (prazan)         | Svjetlo plava (`bg-sky-100`)    |
-
-### Algoritam preklapanja
-
-Za svaki dan u rasponu broji se broj aktivnih događaja (rezervacije + prijave)
-u apartmanu. Ako ≥ 2 → dan je "preklapanje" (narančasto, bez broja).
-
-### Interaktivnost
-
-- Lijevi klik + drag = selekcija perioda (samo unutar jednog reda)
-- `onMouseDown` provjerava `e.button !== 0` da ignorirajre desni klik
-- Desni klik = konteksni izbornik (opcije ovise o tome je li kliknut prazan dan,
-  rezervacija ili prijava — **djelomično implementirano**, u tijeku)
-
-### TypeScript tipovi (`src/types/kalendar.ts`)
-
-```typescript
-type KalendarDan = {
-  datum: string;
-  tip:
-    | "rezervacija_potvrdjena"
-    | "rezervacija_nepotvrdjena"
-    | "prijava"
-    | "preklapanje"
-    | null;
-  redniBroj: number | null;
-  jeOdjava: boolean;
-};
-type KalendarApartman = { accommodationId; naziv; dani: KalendarDan[] };
-type KalendarIznajmljivac = { landlordId; ime; apartmani: KalendarApartman[] };
-type KalendarFiltri = {
-  gradId;
-  landlordId;
-  datumOd;
-  datumDo;
-  brojSoba;
-  brojKreveta;
-  brojPomocnihLezajeva;
-  samoPotvrdjene;
-  samoNepotvrdjene;
-  imaKlima;
-  imaParking;
-  imaWifi;
-  kucniLjubimac;
-  pogledNaMore;
-  samoPrioritetan;
-};
+```text
+docs/development-rules.md
 ```
 
-## MODUL PONUDA
+Arhitektura, query/action/validation pravila, forme, tenant readiness i razvojne konvencije.
 
-### Arhitektura forme za izradu ponude
+### Baza podataka
 
-- Ruta: `/ponude/nova?rezervacijaId=xxx`
-- Server Component učitava rezervaciju i usluge, prosljeđuje u `NovaPonudaClient`
-- Header forme (datumi, podaci gosta) u RHF formi
-- Stavke su **izvan RHF forme** — lokalni `useState` u `PonudaStavkeTable`
-- `NumericInput` koristi lokalni state, propagira vrijednost na `onBlur`
-- Submit čita stavke iz `useRef` (ne iz RHF forme)
+```text
+docs/database.md
+```
 
-### Ključno pravilo — fokus u tablicama
+Značenje tabela, relacije, tenant ownership, FK pravila, database invariants, snapshoti, numeriranje i migrations.
 
-Svaki `watch`/`useWatch` u parent komponenti uzrokuje re-render koji ruši
-fokus na input poljima. Pravilo:
+Stvarna fizička struktura baze uvijek se provjerava u:
 
-- Stavke tablice = lokalni `useState`, nikad `useFieldArray`
-- Kalkulirana polja (sveukupno, predujam) = izolirane podkomponente s vlastitim `useWatch`
-- Root forma komponenta ne smije imati nijedan `watch` poziv
+```text
+src/lib/db/schema/
+```
 
-### PDF generiranje
+### UI / design system
 
-- Biblioteka: `@react-pdf/renderer`
-- API ruta: `/api/ponude/[id]/pdf` — server-side render, vraća PDF buffer
-- PDF komponenta: `src/components/pdf/PonudaPdf.tsx`
-- Logotip: `/public/logo.png` (budući SaaS: `logo_url` u tablici `agencies`)
-- Podaci agencije: hardkodirani u `PonudaPdf.tsx` (budući SaaS: iz tablice `agencies`)
+```text
+docs/ui-design-system.md
+```
 
-### Tabele potrebne za modul ponuda
+shadcn/ui, design tokeni, layout, forme, tablice, toolbar, dialog/sheet i ostala UI pravila.
 
-`offers`, `offers_stavke`, `services`, `taxes`, `reservations`,
-`accommodations`, `landlords`, `partners`, `cities`
+### Trenutno stanje
+
+```text
+docs/status-projekta.md
+```
+
+Što je djelomično implementirano, u razvoju ili planirano.
+
+### Poznati problemi
+
+```text
+docs/known-issues.md
+```
+
+Potvrđeni bugovi, workaroundi, tehnički dug i problemi koje treba istražiti.
+
+### Moduli
+
+```text
+docs/modules/
+├── calendar.md
+├── reservations.md
+├── offers.md
+├── payments.md
+├── stays.md
+├── landlords.md
+└── accommodations.md
+```
+
+Module dokument je primarni dokument za poslovna i implementacijska pravila konkretnog modula.
+
+## Prije rada na featureu
+
+1. Pročitaj `docs/status-projekta.md`.
+2. Ako postoji, pročitaj odgovarajući `docs/modules/<module>.md`.
+3. Pročitaj `docs/database.md` ako promjena utječe na podatke, relacije ili tenant ownership.
+4. Pročitaj `docs/ui-design-system.md` ako mijenjaš UI.
+5. Pročitaj `docs/development-rules.md` prije uvođenja novog arhitekturnog obrasca.
+6. Provjeri `docs/known-issues.md` ako radiš u području koje ima poznate probleme.
+7. Pregledaj stvarni relevantni source prije donošenja zaključka ili implementacije.
+
+Ne učitavaj nepovezanu dokumentaciju bez potrebe.
+
+## Source i dokumentacija
+
+Dokumentacija daje poslovni i arhitekturni kontekst, ali ne pretpostavljaj da precizno opisuje svaki detalj trenutne implementacije.
+
+Ako postoji razlika između dokumentacije i sourcea:
+
+1. utvrdi je li dokumentacija zastarjela
+2. provjeri postoji li bug u sourceu
+3. provjeri radi li se o namjernoj nedovršenoj implementaciji
+4. ne mijenjaj poslovno pravilo samo zato da source i dokumentacija postanu jednaki
+
+Ne izmišljaj ponašanje datoteka ili funkcija koje nisi pregledao.
+
+## Razvojna pravila
+
+Ne uvodi nove arhitekturne obrasce ako postojeći projekt već ima stabilan pattern za isti problem.
+
+Ne radi nepotrebne refactore izvan opsega zadatka.
+
+Ne dodaj apstrakciju za samo jedan use case bez jasne potrebe.
+
+Ne dodaj DELETE samo radi potpunog CRUD-a. Konačna deletion politika projekta još nije donesena.
+
+Kod tenant-sensitive operacija ne pretpostavljaj da je UUID sam po sebi dovoljna zaštita.
+
+Server je trust boundary — client-side validation nije zamjena za server-side validation.
+
+## Jezik i naming
+
+Korisničko sučelje i poslovna dokumentacija:
+
+```text
+hrvatski
+```
+
+Kod, funkcije, varijable i tehnički identifikatori:
+
+```text
+engleski
+```
+
+bez hrvatskih dijakritičkih znakova gdje je praktično.
+
+U hrvatskoj dokumentaciji koristi:
+
+```text
+iznajmljivač
+smještajna jedinica
+```
+
+U tehničkom kodu zadržati postojeće nazive:
+
+```text
+landlord
+accommodation
+```
+
+Ne preimenovati tehničke identifikatore samo radi prijevoda.
+
+## Nakon značajne promjene
+
+Ažuriraj dokumentaciju samo ako je promjena relevantna za njezinu svrhu.
+
+Najčešće:
+
+```text
+docs/status-projekta.md
+docs/modules/<module>.md
+docs/known-issues.md
+```
+
+`project-overview.md`, `database.md`, `development-rules.md` i `ui-design-system.md` mijenjaj samo kada se promijene pravila koja ti dokumenti opisuju.
+
+Ne koristi dokumentaciju kao changelog.
+
+Git je trajna povijest implementacijskih promjena.
