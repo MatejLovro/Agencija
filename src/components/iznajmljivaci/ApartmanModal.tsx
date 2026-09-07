@@ -251,7 +251,7 @@ export function ApartmanModal({
       }}
     >
       <DialogContent
-        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="max-w-[900px] w-full sm:max-w-[900px] max-h-[90vh] overflow-y-auto"
         // Sakrivamo defaultni X gumb jer imamo vlastiti
         showCloseButton={false}
         aria-describedby={undefined}
@@ -305,52 +305,36 @@ export function ApartmanModal({
                     <h3 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3 pb-2 border-b">
                       Identifikacija
                     </h3>
-                    <div className="space-y-3">
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              Kratki naziv{" "}
-                              <span className="text-destructive">*</span>
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                className="bg-muted/40"
-                                {...field}
-                                autoComplete="off"
-                                name={`field_${Math.random()}`}
-                                onChange={(e) =>
-                                  field.onChange(e.target.value.toUpperCase())
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <div className="grid grid-cols-2 gap-x-10 gap-y-3">
+                      {/* LEFT column */}
+                      <div className="space-y-3">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                Kratki naziv{" "}
+                                <span className="text-destructive">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="bg-muted/40 w-full"
+                                  {...field}
+                                  autoComplete="off"
+                                  name={`field_${Math.random()}`}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value.toUpperCase(),
+                                    )
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                      <FormField
-                        control={form.control}
-                        name="fullName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Puni naziv</FormLabel>
-                            <FormControl>
-                              <Input
-                                className="bg-muted/40"
-                                placeholder="npr. Apartman Sunce — jednosoban s terasom"
-                                {...field}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
                           name="vrstaApartmana"
@@ -381,6 +365,47 @@ export function ApartmanModal({
 
                         <FormField
                           control={form.control}
+                          name="kategorizacijskiBroj"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Kategorizacijski broj</FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="bg-muted/40 w-full"
+                                  placeholder="npr. HR-12345-AB"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {/* RIGHT column */}
+                      <div className="space-y-3">
+                        <FormField
+                          control={form.control}
+                          name="fullName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Puni naziv</FormLabel>
+                              <FormControl>
+                                <Input
+                                  className="bg-muted/40 w-full"
+                                  placeholder="npr. Apartman Sunce — jednosoban s terasom"
+                                  {...field}
+                                  value={field.value ?? ""}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
                           name="brojZvjezdica"
                           render={({ field }) => (
                             <FormItem>
@@ -401,27 +426,6 @@ export function ApartmanModal({
                             </FormItem>
                           )}
                         />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="kategorizacijskiBroj"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Kategorizacijski broj</FormLabel>
-                              <FormControl>
-                                <Input
-                                  className="bg-muted/40"
-                                  placeholder="npr. HR-12345-AB"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
 
                         <FormField
                           control={form.control}
@@ -431,7 +435,7 @@ export function ApartmanModal({
                               <FormLabel>Web URL</FormLabel>
                               <FormControl>
                                 <Input
-                                  className="bg-muted/40"
+                                  className="bg-muted/40 w-full"
                                   placeholder="https://..."
                                   {...field}
                                   value={field.value ?? ""}
@@ -450,7 +454,7 @@ export function ApartmanModal({
                     <h3 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3 pb-2 border-b">
                       Lokacija
                     </h3>
-                    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+                    <div className="grid grid-cols-2 gap-x-10">
                       <FormField
                         control={form.control}
                         name="cityId"
@@ -468,7 +472,6 @@ export function ApartmanModal({
                           </FormItem>
                         )}
                       />
-                      <div className="pb-0.5" />
                       <FormField
                         control={form.control}
                         name="address"
@@ -478,7 +481,7 @@ export function ApartmanModal({
                               Adresa <span className="text-destructive">*</span>
                             </FormLabel>
                             <FormControl>
-                              <Input className="bg-muted/40" {...field} />
+                              <Input className="bg-muted/40 w-full" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -492,13 +495,13 @@ export function ApartmanModal({
                     <h3 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3 pb-2 border-b">
                       Kapacitet
                     </h3>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                       <FormField
                         control={form.control}
                         name="brojSoba"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>
+                            <FormLabel className="whitespace-nowrap">
                               Br. soba{" "}
                               <span className="text-destructive">*</span>
                             </FormLabel>
@@ -524,7 +527,7 @@ export function ApartmanModal({
                         name="brojKreveta"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>
+                            <FormLabel className="whitespace-nowrap">
                               Br. kreveta{" "}
                               <span className="text-destructive">*</span>
                             </FormLabel>
@@ -550,7 +553,9 @@ export function ApartmanModal({
                         name="brojPomocnihLezajeva"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Pom. ležajevi</FormLabel>
+                            <FormLabel className="whitespace-nowrap">
+                              Pom. ležajevi
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -577,7 +582,9 @@ export function ApartmanModal({
                         name="maxOsoba"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Max osoba</FormLabel>
+                            <FormLabel className="whitespace-nowrap">
+                              Max osoba
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"

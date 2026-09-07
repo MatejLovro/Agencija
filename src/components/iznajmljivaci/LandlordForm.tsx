@@ -149,8 +149,8 @@ export function LandlordForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
         {/* ── Vrsta iznajmljivača ─────────────────────────────── */}
-        <section className="bg-card border rounded-lg p-5 mb-4">
-          <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-4 pb-2 border-b">
+        <section className="bg-card text-card-foreground border border-border rounded-lg shadow-sm p-5 mb-4">
+          <h2 className="text-sm font-semibold mb-4 pb-2 border-b border-border">
             Vrsta iznajmljivača
           </h2>
           <FormField
@@ -194,15 +194,14 @@ export function LandlordForm({
           />
         </section>
 
-        {/* ── Osobni podaci i kontakt ─────────────────────────── */}
-        <section className="bg-card border rounded-lg p-5 mb-4">
-          <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-4 pb-2 border-b">
-            Osobni podaci i kontakt
-          </h2>
-
+        {/* ── Osobni podaci i kontakt / Poslovni podaci ────────── */}
+        <section className="bg-card text-card-foreground border border-border rounded-lg shadow-sm p-5 mb-4">
           <div className="grid grid-cols-2 gap-x-8 gap-y-0">
             {/* LEFT column */}
             <div className="space-y-3">
+              <h2 className="text-sm font-semibold mb-4 pb-2 border-b border-border">
+                Osobni podaci i kontakt
+              </h2>
               <FormField
                 control={form.control}
                 name="surname"
@@ -421,6 +420,10 @@ export function LandlordForm({
 
             {/* RIGHT column */}
             <div className="space-y-3">
+              <h2 className="text-sm font-semibold mb-4 pb-2 border-b border-border">
+                Poslovni podaci
+              </h2>
+
               <FormField
                 control={form.control}
                 name="rjesenje"
@@ -563,11 +566,9 @@ export function LandlordForm({
                 )}
               />
 
-              <Separator className="my-2" />
+              <Separator className="my-2 bg-border" />
 
-              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                eVisitor podaci
-              </p>
+              <p className="text-sm font-semibold">eVisitor</p>
 
               <FormField
                 control={form.control}

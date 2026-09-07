@@ -337,6 +337,57 @@ definitivno poslovno pravilo.
 Ako jest, database `UNIQUE` je sigurniji konačni model.
 
 
+## 12a. Pricelist queryji nemaju tenant ownership provjeru
+
+**Status: OPEN — prije SaaS produkcije obavezno**
+
+Potvrđeni queryji u:
+
+```text
+src/lib/db/queries/pricelist.ts
+```
+
+```text
+getPricelistByAccommodation()
+createPricelistEntry()
+updatePricelistEntry()
+deletePricelistEntry()
+```
+
+trenutno pristupaju podacima isključivo preko:
+
+```text
+accommodationId
+```
+
+ili:
+
+```text
+pricelist.id
+```
+
+bez provjere pripada li povezana smještajna jedinica trenutnoj agenciji.
+
+
+### Posljedica
+
+Uz poznati `accommodationId` ili `pricelist.id` (npr. UUID iz drugog konteksta), trenutna implementacija dopušta:
+
+- dohvat cjenika smještajne jedinice druge agencije
+- dodavanje stavke cjenika na smještajnu jedinicu druge agencije
+- update/delete stavke cjenika druge agencije preko poznatog `pricelist.id`
+
+
+### Trenutni kontekst
+
+Problem trenutno prikriva single-agency model preko `AGENCY_ID` — u praksi ne postoji druga agencija čiji bi se podaci mogli slučajno dohvatiti ili izmijeniti.
+
+
+### Zahtjev
+
+Prije multi-tenant SaaS rada ovi queryji trebaju provjeriti da povezani `accommodation.agencyId` odgovara trenutnoj agenciji, u skladu s pravilom iz `docs/database.md` (cross-tenant FK zaštita).
+
+
 # eVisitor sigurnost
 
 ## 13. `eVisitPass` sprema se kao običan string
@@ -516,34 +567,24 @@ Ako se kompatibilnost kasnije riješi nadogradnjom ili preciznijim genericsima, 
 
 # Ponude
 
-## 20. PDF/print ruta za ponudu ne postoji
+## 20. PDF print workflow nije potvrđeno dovršen
 
-**Status: OPEN**
-
-UI pokušava koristiti putanju:
-
-```text
-/api/ponude/[id]/pdf
-```
-
-ali pregledani source ne sadrži:
+**Status: INVESTIGATE**
 
 ```text
 src/app/api/ponude/[id]/pdf/route.ts
 ```
 
+postoji i `PonudeClient.tsx` je poziva preko `window.open`.
+
+Ruta dohvaća ponudu preko `getOfferForPdf()` i renderira `PonudaPdf` komponentu u PDF.
+
 
 ### Posljedica
 
-`PonudaPdf.tsx` postoji, ali puni print workflow nije dovršen.
+Sama ruta postoji i UI je koristi, ali to se ne smije automatski tumačiti kao da je cijeli print workflow dovršen i ispravan.
 
-Dugme:
-
-```text
-Ispiši
-```
-
-zato se ne smije smatrati završenom funkcionalnošću.
+Povezana otvorena pitanja (brojevi #22 i #23 niže) i dalje vrijede.
 
 
 ## 21. Kreiranje ponude i stavki nije obuhvaćeno jednom potvrđenom transakcijom
@@ -928,6 +969,58 @@ drizzle migration history
 Prije produkcije provjeriti da se schema može reproducirati iz kontroliranog migration workflowa.
 
 
+## 34a. `schema/index.ts` ne eksportira sve tabele
+
+**Status: INVESTIGATE — nizak prioritet**
+
+```text
+src/lib/db/schema/index.ts
+```
+
+ima komentar:
+
+```text
+Single entry point for all schema tables.
+```
+
+ali trenutno ne eksportira:
+
+```text
+offers
+offers_stavke
+services
+taxes
+izvod_tmp
+payments
+```
+
+
+### Trenutno stanje
+
+Barrel file koristi se samo na manjem broju mjesta u projektu.
+
+Veći dio koda, uključujući cijeli `offers` query sloj, direktno importira iz pojedinačnih schema datoteka, primjerice:
+
+```text
+@/lib/db/schema/offers
+@/lib/db/schema/offers_stavke
+```
+
+
+### Rizik
+
+Nema poznatog funkcionalnog problema.
+
+Komentar u datoteci trenutno ne odgovara stvarnoj praksi importa u projektu.
+
+
+### Odluka
+
+Prije bilo kakvog čišćenja potrebno je odlučiti hoće li barrel file postati stvarni standard za importe kroz projekt, ili ga treba ukloniti/preformulirati komentar da odražava stvarno stanje.
+
+Ne standardizirati importe niti mijenjati barrel dok odluka nije donesena.
+
+
 # UI infrastruktura
 
 ## 35. `ComboboxWithCreate` focus/event ponašanje je osjetljivo
@@ -953,6 +1046,51 @@ mogu imati osjetljivo ponašanje vezano uz:
 Kod promjena prvo pregledati postojeći stabilni pattern.
 
 Ne raditi generički refactor samo radi pojednostavljenja.
+
+
+## 35a. Custom `max-w-*` na `DialogContent` mora uključivati `sm:` variantu
+
+**Status: WORKAROUND**
+
+```text
+src/components/ui/dialog.tsx
+```
+
+`DialogContent` ima default:
+
+```text
+max-w-[calc(100%-2rem)] sm:max-w-sm
+```
+
+Kada komponenta koja koristi `DialogContent` proslijedi vlastiti `className` s custom širinom bez `sm:` prefiksa, primjerice:
+
+```text
+max-w-[1180px]
+```
+
+`cn()` (tailwind-merge) zamijeni base `max-w-[calc(100%-2rem)]`, ali **ne** zamijeni `sm:max-w-sm`, jer tailwind-merge tretira base i `sm:` variantu istog utilityja kao odvojene slotove.
+
+Rezultat: na desktopu (≥640px) i dalje pobjeđuje `sm:max-w-sm` (384px), pa modal ostaje uzak unatoč postavljenom `max-w-[Npx]`.
+
+Potvrđeno na `ApartmanModal.tsx` tijekom vizualnog redizajna (2026-09-07).
+
+
+### Ispravak
+
+Custom širinu na `DialogContent` uvijek proslijediti s odgovarajućom `sm:` variantom, primjerice:
+
+```text
+max-w-[900px] sm:max-w-[900px]
+```
+
+Ne mijenjati default u `dialog.tsx` radi pojedinačnog modala — ispravak provoditi lokalno u komponenti koja custom širinu treba.
+
+
+### Povezano
+
+```text
+src/components/iznajmljivaci/ApartmanModal.tsx
+```
 
 
 ## 36. Visina kompleksnih dashboard ekrana

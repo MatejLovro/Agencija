@@ -160,7 +160,7 @@ export function NoviIznajmljivacClient({
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
+    <div className="max-w-[1200px] w-full mx-auto px-4 py-6 bg-background">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-2xl font-medium">Novi iznajmljivač</h1>
         <p className="text-sm text-muted-foreground">
@@ -174,15 +174,13 @@ export function NoviIznajmljivacClient({
         submitDisabled={isLandlordSaved}
       />
 
-      <div className="mt-8 mb-6 border-t" />
+      <div className="mt-8 mb-6" />
 
       <div className="grid grid-cols-2 gap-6">
-        {/* LIJEVO — Tablica apartmana */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Apartmani
-            </h2>
+        {/* LIJEVO — Tablica smještajnih jedinica */}
+        <div className="bg-card text-card-foreground border border-border rounded-lg shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">Smještajne jedinice</h2>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -218,23 +216,17 @@ export function NoviIznajmljivacClient({
             </div>
           </div>
 
-          <div className="border rounded-md overflow-hidden">
+          <div className="border border-border rounded-md overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 border-b">
+              <thead className="bg-muted text-muted-foreground border-b border-border">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">
-                    Naziv
-                  </th>
-                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">
-                    Vrsta
-                  </th>
-                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">
-                    Sobe
-                  </th>
-                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">
+                  <th className="text-left px-3 py-2 font-medium">Naziv</th>
+                  <th className="text-left px-3 py-2 font-medium">Vrsta</th>
+                  <th className="text-center px-3 py-2 font-medium">Sobe</th>
+                  <th className="text-center px-3 py-2 font-medium">
                     Kreveta
                   </th>
-                  <th className="text-center px-3 py-2 font-medium text-muted-foreground">
+                  <th className="text-center px-3 py-2 font-medium">
                     Pom. l.
                   </th>
                 </tr>
@@ -259,7 +251,7 @@ export function NoviIznajmljivacClient({
                         setSelectedAccommodationId(acc.id);
                         setSelectedPricelistEntryId(null);
                       }}
-                      className={`cursor-pointer border-b last:border-0 transition-colors ${
+                      className={`cursor-pointer border-b border-border last:border-0 transition-colors ${
                         selectedAccommodationId === acc.id
                           ? "bg-primary/10"
                           : "hover:bg-muted/40"
@@ -286,9 +278,9 @@ export function NoviIznajmljivacClient({
         </div>
 
         {/* DESNO — Tablica cjenika */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+        <div className="bg-card text-card-foreground border border-border rounded-lg shadow-sm p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">
               {selectedAccommodationId
                 ? `Cjenik — ${accommodations.find((a) => a.id === selectedAccommodationId)?.name ?? ""}`
                 : "Cjenik"}
@@ -332,25 +324,25 @@ export function NoviIznajmljivacClient({
                 }}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                Upiši cjenik
+                Upiši cijenu
               </Button>
             </div>
           </div>
 
-          <div className="border rounded-md overflow-hidden">
+          <div className="border border-border rounded-md overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 border-b">
+              <thead className="bg-muted text-muted-foreground border-b border-border">
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                  <th className="text-left px-3 py-2 font-medium">
                     Datum od
                   </th>
-                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">
+                  <th className="text-left px-3 py-2 font-medium">
                     Datum do
                   </th>
-                  <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                  <th className="text-right px-3 py-2 font-medium">
                     Cijena (€)
                   </th>
-                  <th className="text-right px-3 py-2 font-medium text-muted-foreground">
+                  <th className="text-right px-3 py-2 font-medium">
                     Cijena Izn.
                   </th>
                 </tr>
@@ -372,7 +364,7 @@ export function NoviIznajmljivacClient({
                     <tr
                       key={entry.id}
                       onClick={() => setSelectedPricelistEntryId(entry.id)}
-                      className={`cursor-pointer border-b last:border-0 transition-colors ${
+                      className={`cursor-pointer border-b border-border last:border-0 transition-colors ${
                         selectedPricelistEntryId === entry.id
                           ? "bg-primary/10"
                           : "hover:bg-muted/40"

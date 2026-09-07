@@ -22,8 +22,8 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex w-20 flex-col items-center border-r bg-background py-4">
-      <div className="mb-4 w-full border-b pb-4 text-center text-xs font-medium text-muted-foreground">
+    <aside className="flex w-20 flex-col items-center border-r border-sidebar-border bg-sidebar py-4">
+      <div className="mb-4 w-full border-b border-sidebar-border pb-4 text-center text-xs font-medium text-sidebar-foreground/70">
         AG
       </div>
 
@@ -34,9 +34,9 @@ export function Sidebar() {
             href={href}
             className={cn(
               "flex w-16 flex-col items-center gap-1 rounded-md px-2 py-2.5 text-center transition-colors",
-              "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               pathname.startsWith(href) &&
-                "bg-accent text-accent-foreground font-medium",
+                "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
             )}
           >
             <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
