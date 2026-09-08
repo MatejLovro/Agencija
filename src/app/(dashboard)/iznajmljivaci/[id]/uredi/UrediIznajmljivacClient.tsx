@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { useState, useTransition, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LandlordForm } from "@/components/iznajmljivaci/LandlordForm";
+import { UnsavedChangesDialog } from "@/components/iznajmljivaci/UnsavedChangesDialog";
 import {
   ApartmanModal,
   type AccommodationRow,
@@ -21,6 +23,7 @@ import {
   selectableTableHeaderClass,
   selectableTableRowClass,
 } from "@/lib/utils";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import type { AccommodationFormValues } from "@/lib/validations/accomodation";
 
 interface City {
@@ -55,6 +58,16 @@ export function UrediIznajmljivacClient({
   displayName,
   initialAccommodations,
 }: UrediIznajmljivacClientProps) {
+  const router = useRouter();
+  const [isDirty, setIsDirty] = useState(false);
+
+  const goToList = useCallback(() => {
+    router.push(`/iznajmljivaci?selected=${landlordId}`);
+  }, [router, landlordId]);
+
+  const { dialogOpen, requestExit, cancelExit, confirmExit } =
+    useUnsavedChangesGuard(isDirty, goToList);
+
   const [accommodations, setAccommodations] = useState<AccommodationRow[]>(
     initialAccommodations,
   );
@@ -185,16 +198,23 @@ export function UrediIznajmljivacClient({
     <div className="max-w-[1200px] w-full mx-auto px-4 py-6 bg-background">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-2xl font-medium">Uredi: {displayName}</h1>
-        <p className="text-sm text-muted-foreground">
-          <span className="text-destructive">*</span> Obavezno polje
-        </p>
+        <Button type="button" variant="outline" size="sm" onClick={requestExit}>
+          <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+          Povratak na popis
+        </Button>
       </div>
 
       <LandlordForm
         cities={cities}
         defaultValues={defaultValues}
         landlordId={landlordId}
+        onDirtyChange={setIsDirty}
+        onRequestExit={requestExit}
       />
+
+      <p className="text-sm text-muted-foreground mt-2">
+        <span className="text-destructive">*</span> Obavezno polje
+      </p>
 
       <div className="mt-8 mb-6" />
 
@@ -458,6 +478,12 @@ export function UrediIznajmljivacClient({
           defaultValues={editingPricelistEntry ?? undefined}
         />
       )}
+
+      <UnsavedChangesDialog
+        open={dialogOpen}
+        onCancel={cancelExit}
+        onConfirm={confirmExit}
+      />
     </div>
   );
 }

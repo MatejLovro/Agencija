@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import { Search, Plus, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import type { LandlordRow } from "@/lib/db/queries/landlords";
 import type { AccommodationRow } from "@/lib/db/queries/accommodations";
 import type { PricelistRow } from "@/lib/db/queries/pricelist";
 import { fetchAccommodations, fetchPricelist } from "./actions";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -74,6 +74,32 @@ export function IznajmljivaciClient({
   const [pricelist, setPricelist] = useState<PricelistRow[]>(initialPricelist);
 
   const [isPending, startTransition] = useTransition();
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedRowRef = useRef<HTMLTableRowElement>(null);
+  const appliedSelectedParam = useRef(false);
+
+  // Primjena ?selected=<id> pri povratku s detaljne forme iznajmljivača —
+  // izvršava se točno jednom, neovisno o kasnijem čišćenju URL-a niže.
+  useEffect(() => {
+    if (appliedSelectedParam.current) return;
+    appliedSelectedParam.current = true;
+
+    const selectedId = searchParams.get("selected");
+    if (!selectedId) return;
+
+    const landlord = landlords.find((l) => l.id === selectedId);
+    if (!landlord) return;
+
+    handleSelectLandlord(landlord);
+    router.replace("/iznajmljivaci", { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    selectedRowRef.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedLandlord?.id]);
 
   // Odabir iznajmljivača — dohvati njegove apartmane
   function handleSelectLandlord(landlord: LandlordRow) {
@@ -147,8 +173,6 @@ export function IznajmljivaciClient({
       return <span className="ml-1 text-muted-foreground/40">↕</span>;
     return <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
-
-  const router = useRouter();
 
   return (
     <div className="flex flex-col gap-6">
@@ -235,6 +259,11 @@ export function IznajmljivaciClient({
             {filtered.map((landlord) => (
               <TableRow
                 key={landlord.id}
+                ref={
+                  selectedLandlord?.id === landlord.id
+                    ? selectedRowRef
+                    : undefined
+                }
                 className={
                   selectedLandlord?.id === landlord.id
                     ? "bg-accent cursor-pointer"

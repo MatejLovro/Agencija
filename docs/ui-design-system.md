@@ -392,6 +392,14 @@ Opća pravila:
 - invalid state mora biti vizualno uočljiv
 - disabled i read-only stanja moraju biti jasna
 
+### Legenda obaveznih polja
+
+Legenda tipa `* Obavezno polje` prikazuje se uz formu, ispod glavnog form bloka, poravnata s lijevim rubom forme.
+
+Legenda ne smije biti smještena u header stranice uz navigacijske ili akcijske kontrole (npr. "Povratak na popis", "Odustani", "Spremi") jer to vizualno stvara pogrešan dojam da je legenda povezana s tom kontrolom.
+
+Footer akcije forme (npr. Odustani, Spremi) ostaju odvojene od legende, standardno poravnate desno.
+
 ### Field width
 
 Širina polja treba odgovarati očekivanom sadržaju.
@@ -627,6 +635,27 @@ Koristiti za:
 Koristiti kada je forma ili workflow dovoljno kompleksan da zahtijeva vlastiti radni prostor.
 
 Ne pokušavati svaki proces smjestiti u modal.
+
+### Save vs. izlazak iz radnog konteksta
+
+Za veće radne ekrane (npr. uređivanje zapisa s više povezanih cjelina — osnovni podaci, podređeni zapisi, tablice) vrijedi:
+
+- **Save sprema podatke, ali sam po sebi ne zatvara trenutni radni kontekst.** Nakon uspješnog spremanja korisnik ostaje na istom ekranu i može nastaviti raditi.
+- **Izlazak iz radnog konteksta (povratak na popis, zatvaranje ekrana i sl.) je zasebna, eksplicitna akcija**, vizualno sekundarna u odnosu na Save.
+- Ako u trenutku izlaska postoje nespremljene izmjene, korisnika treba prije izlaska upozoriti na njihov gubitak putem confirmation dialoga (standardni shadcn/Radix `AlertDialog`).
+- U takvom confirmation dialogu **sigurnija opcija (odustani od izlaska / ostani na formi) mora biti default** — vizualno i po initial focusu — dok opcija koja odbacuje promjene ne smije biti isticana niti fokusirana pri otvaranju.
+- Dirty-state za ovu svrhu prati konkretnu formu koja se sprema (npr. React Hook Form `formState.isDirty`) — ne uključuje podređene zapise koji imaju vlastito, zasebno spremanje (npr. stavke u pratećim tablicama spremane kroz vlastite modalne forme).
+- **Save gumb na ovakvim formama je aktivan samo kada postoje nespremljene promjene** (npr. `disabled={!formState.isDirty}`, uz postojeću zaštitu od višestrukog submita dok je spremanje u tijeku). Nakon uspješnog spremanja forma se vraća u "clean" stanje (`reset()`), čime Save ponovno postaje disabled — bez potrebe za zasebnim paralelnim stateom za enabled/disabled.
+
+Referentna implementacija: ekran uređivanja iznajmljivača (`/iznajmljivaci/[id]/uredi`).
+
+### Očuvanje selekcije pri povratku na popis
+
+Kada korisnik napusti detaljnu formu/radni kontekst zapisa (npr. iz `/iznajmljivaci/[id]/uredi`) i vrati se na odgovarajući popis, taj zapis mora ostati selektiran u tablici popisa — bez obzira je li do povratka došlo klikom na Spremi, Odustani, Povratak na popis, ili nakon odbacivanja nespremljenih promjena kroz confirmation dialog.
+
+Preferirani mehanizam (kad projekt nema drugi postojeći globalni state za ovu svrhu): kratkotrajni query parametar u URL-u, npr. `?selected=<id>`, koji stranica popisa pročita jednom pri mountu radi inicijalne selekcije (i po potrebi `scrollIntoView({ block: "nearest" })` ako je red izvan vidljivog područja), a zatim ukloni iz URL-a (`router.replace` bez scrolla) da ne ostane trajno u linku. Obično otvaranje popisa bez tog parametra zadržava postojeće default ponašanje selekcije.
+
+Referentna implementacija: `/iznajmljivaci` (query param `selected`).
 
 ## 21. Feedback
 

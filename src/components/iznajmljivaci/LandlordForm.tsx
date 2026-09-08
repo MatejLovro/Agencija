@@ -3,7 +3,7 @@
 import { useForm, type DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, useEffect } from "react";
 import { Save, X, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
@@ -47,13 +47,13 @@ interface LandlordFormProps {
   cities: City[];
   defaultValues?: any;
   landlordId?: string;
-  onSaved?: (
-    landlordId: string,
-    tipProvizije: "P" | "I",
-    cityId: number,
-    address: string,
-  ) => void;
-  submitDisabled?: boolean;
+  /** Poziva se pri svakoj promjeni dirty-statea forme (nespremljene izmjene). */
+  onDirtyChange?: (isDirty: boolean) => void;
+  /**
+   * Ako je predan, preuzima "Odustani" akciju umjesto zadanog router.push-a
+   * (parent tada sam odlučuje treba li prikazati unsaved-changes confirmation).
+   */
+  onRequestExit?: () => void;
 }
 
 const vrstaLabels: Record<string, string> = {
@@ -74,8 +74,8 @@ export function LandlordForm({
   cities,
   defaultValues,
   landlordId,
-  onSaved,
-  submitDisabled,
+  onDirtyChange,
+  onRequestExit,
 }: LandlordFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -126,6 +126,12 @@ export function LandlordForm({
 
   const [showPassword, setShowPassword] = useState(false);
 
+  const { isDirty } = form.formState;
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty]);
+
   function onSubmit(data: LandlordFormValues) {
     startTransition(async () => {
       try {
@@ -138,11 +144,14 @@ export function LandlordForm({
           return;
         }
 
-        // NOVO: callback ima prednost nad redirectom (samo za novi iznajmljivač)
-        if (!isEdit && onSaved && result.data?.id) {
-          onSaved(result.data.id, data.tipProvizije);
+        if (!isEdit && result.data?.id) {
+          // Novi iznajmljivač je kreiran — prelazak na canonical edit URL
+          // (replace da /novi ne ostane u browser historyju).
+          router.replace(`/iznajmljivaci/${result.data.id}/uredi`);
         } else {
-          router.push("/iznajmljivaci");
+          // Uređivanje postojećeg — Spremi ne zatvara radni kontekst,
+          // samo vraća formu u "clean" (nedirty) stanje.
+          form.reset(data);
         }
       } catch (error) {
         console.error("Failed to save landlord", error);
@@ -652,13 +661,17 @@ export function LandlordForm({
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/iznajmljivaci")}
+            onClick={() =>
+              onRequestExit
+                ? onRequestExit()
+                : router.push("/iznajmljivaci")
+            }
             disabled={isPending}
           >
             <X className="h-4 w-4 mr-1" />
             Odustani
           </Button>
-          <Button type="submit" disabled={isPending || !!submitDisabled}>
+          <Button type="submit" disabled={isPending || !isDirty}>
             <Save className="h-4 w-4 mr-1" />
             {isPending
               ? "Pohranjivanje..."
