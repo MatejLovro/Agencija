@@ -4,7 +4,7 @@ import { landlords } from "@/lib/db/schema/landlords";
 import { reservations } from "@/lib/db/schema/reservations";
 import { stays } from "@/lib/db/schema/stays";
 import { and, eq, lte, gte, or } from "drizzle-orm";
-import { KalendarFiltri } from "@/types/kalendar";
+import { KalendarFiltri } from "@/types/kalendar.types";
 
 export type KalendarQueryRow = {
   accommodationId: string;

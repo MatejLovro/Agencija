@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
@@ -157,7 +157,7 @@ export default function RezervacijaModal({
     [accommodationId, dateFromIso, dateToIso],
   );
   const form = useForm<ReservationFormValues>({
-    resolver: zodResolver(reservationSchema) as any,
+    resolver: zodResolver(reservationSchema) as Resolver<ReservationFormValues>,
     defaultValues,
   });
 

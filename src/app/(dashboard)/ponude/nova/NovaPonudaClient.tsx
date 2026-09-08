@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -222,7 +222,7 @@ export default function NovaPonudaClient({
   const brojDana = daysBetween(rezervacija.dateFrom, rezervacija.dateTo);
 
   const form = useForm<OfferFormValues>({
-    resolver: zodResolver(offerSchema) as any,
+    resolver: zodResolver(offerSchema) as Resolver<OfferFormValues>,
     defaultValues: {
       datum: datumIso,
       ponudaVrijedaDana: vrijediDana,

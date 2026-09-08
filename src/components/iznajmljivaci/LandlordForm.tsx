@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm, type DefaultValues } from "react-hook-form";
+import { useForm, type DefaultValues, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useTransition, useEffect } from "react";
@@ -45,7 +45,7 @@ interface City {
 
 interface LandlordFormProps {
   cities: City[];
-  defaultValues?: any;
+  defaultValues?: Partial<LandlordFormValues>;
   landlordId?: string;
   /** Poziva se pri svakoj promjeni dirty-statea forme (nespremljene izmjene). */
   onDirtyChange?: (isDirty: boolean) => void;
@@ -82,7 +82,7 @@ export function LandlordForm({
   const isEdit = !!landlordId;
 
   const form = useForm<LandlordFormValues>({
-    resolver: zodResolver(landlordSchema) as any,
+    resolver: zodResolver(landlordSchema) as Resolver<LandlordFormValues>,
     defaultValues: {
       vrstaIznajmljivaca: "fizicka_osoba",
       tipProvizije: "P",

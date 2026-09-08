@@ -1,7 +1,7 @@
 // src/components/iznajmljivaci/CjenikModal.tsx
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect, useRef } from "react";
 
@@ -75,7 +75,9 @@ export function CjenikModal({
   const pricePerNightRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PricelistEntryFormValues>({
-    resolver: zodResolver(pricelistEntrySchema) as any,
+    resolver: zodResolver(
+      pricelistEntrySchema,
+    ) as Resolver<PricelistEntryFormValues>,
     defaultValues: defaultValues
       ? {
           dateFrom: isoToHrDate(defaultValues.dateFrom),

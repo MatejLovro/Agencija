@@ -1,5 +1,5 @@
 // src/lib/mock/kalendarMock.ts
-import { KalendarIznajmljivac } from "@/types/kalendar";
+import { KalendarIznajmljivac } from "@/types/kalendar.types";
 
 // Generira niz datuma između dva ISO datuma (uključivo)
 export function generateDates(from: string, to: string): string[] {

@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTransition } from "react";
+import { useTransition, useEffect } from "react";
 import { capitalizeWords } from "@/lib/utils/formatters";
 
 import {
@@ -34,22 +34,31 @@ interface AddCityDialogProps {
     name: string;
     zip?: string | null;
   }) => void;
+  initialName?: string;
 }
 
 export function AddCityDialog({
   open,
   onOpenChange,
   onCityCreated,
+  initialName,
 }: AddCityDialogProps) {
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<CityFormValues>({
     resolver: zodResolver(citySchema),
     defaultValues: {
-      name: "",
+      name: initialName ?? "",
       zip: "",
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({ name: initialName ?? "", zip: "" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialName]);
 
   function onSubmit(data: CityFormValues) {
     startTransition(async () => {

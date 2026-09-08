@@ -25,6 +25,7 @@ import {
 } from "@/lib/utils";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import type { AccommodationFormValues } from "@/lib/validations/accomodation";
+import type { LandlordFormValues } from "@/lib/validations/landlord";
 
 interface City {
   id: number;
@@ -36,7 +37,7 @@ interface UrediIznajmljivacClientProps {
   cities: City[];
   landlordId: string;
   tipProvizije: "P" | "I";
-  defaultValues: any;
+  defaultValues: LandlordFormValues;
   displayName: string;
   initialAccommodations: AccommodationRow[];
 }

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search } from "lucide-react";
-import { KalendarFiltri } from "@/types/kalendar";
+import { KalendarFiltri } from "@/types/kalendar.types";
 
 interface KalendarFiltriFormProps {
   onSearch: (filtri: KalendarFiltri) => void;

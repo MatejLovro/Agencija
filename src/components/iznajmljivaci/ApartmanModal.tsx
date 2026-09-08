@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { CityCombobox } from "./CityCombobox";
@@ -185,7 +185,9 @@ export function ApartmanModal({
   }
 
   const form = useForm<AccommodationFormValues>({
-    resolver: zodResolver(accommodationSchema) as any,
+    resolver: zodResolver(
+      accommodationSchema,
+    ) as Resolver<AccommodationFormValues>,
     defaultValues:
       defaultValues ?? getDefaultValues(landlordCityId, landlordAddress),
   });

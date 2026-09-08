@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import KalendarFiltriForm from "@/components/kalendar/KalendarFiltriForm";
 import KalendarGantt from "@/components/kalendar/KalendarGantt";
 import RezervacijaModal from "@/components/kalendar/RezervacijaModal";
-import { KalendarFiltri, KalendarIznajmljivac } from "@/types/kalendar";
+import { KalendarFiltri, KalendarIznajmljivac } from "@/types/kalendar.types";
 import {
   actionFetchKalendarData,
   actionProvjeriMoguceRezerviranje,

@@ -11,17 +11,12 @@ import {
   actionProknjizi,
 } from "@/lib/actions/izvod";
 import { IzvodTmpRow } from "@/lib/db/queries/izvod-tmp";
+import type { RezervacijaComboboxOption } from "@/lib/db/queries/reservations";
 import { RezervacijaCombobox, RezervacijaOption } from "./RezervacijaCombobox";
 
 type Props = {
   initialRows: IzvodTmpRow[];
-  reservations: Array<{
-    id: string;
-    redniBroj: number;
-    guestName: string;
-    guestSurname: string;
-    dateFrom: string;
-  }>;
+  reservations: RezervacijaComboboxOption[];
 };
 
 function formatOfferBroj(row: IzvodTmpRow): string {

@@ -3,6 +3,7 @@ import { getCities } from "@/lib/db/queries/cities";
 import { getLandlordById } from "@/lib/db/queries/landlords";
 import { getAccommodationsByLandlord } from "@/lib/db/queries/accommodations";
 import { isoToHrDate } from "@/lib/utils/dates";
+import type { LandlordFormValues } from "@/lib/validations/landlord";
 import { UrediIznajmljivacClient } from "./UrediIznajmljivacClient";
 
 interface Props {
@@ -41,7 +42,7 @@ export default async function UrediIznajmljivacaPage({ params }: Props) {
     eVisitName: landlord.eVisitName ?? "",
     eVisitPass: landlord.eVisitPass ?? "",
     prioritetan: landlord.prioritetan,
-  };
+  } as LandlordFormValues;
 
   const displayName =
     landlord.vrstaIznajmljivaca === "tvrtka" ||

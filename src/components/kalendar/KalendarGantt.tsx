@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { KalendarIznajmljivac, KalendarDan } from "@/types/kalendar";
+import { KalendarIznajmljivac, KalendarDan } from "@/types/kalendar.types";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

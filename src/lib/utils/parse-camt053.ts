@@ -25,7 +25,27 @@ function asArray<T>(value: T | T[] | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
-function extractPartyName(rltdPties: any, cdtDbtInd: "CRDT" | "DBIT"): string {
+// Loosely-typed shape of the parsed camt.053 XML — fast-xml-parser has no
+// schema-aware output, so we only describe the fields we actually read.
+type XmlParty = { Pty?: { Nm?: string }; Nm?: string };
+type XmlRelatedParties = { Dbtr?: XmlParty; Cdtr?: XmlParty };
+type XmlTxDtls = {
+  RltdPties?: XmlRelatedParties;
+  RmtInf?: { Strd?: { CdtrRefInf?: { Ref?: string }; AddtlRmtInf?: string } };
+};
+type XmlEntry = {
+  CdtDbtInd: "CRDT" | "DBIT";
+  Amt?: { "#text"?: string } | string;
+  AcctSvcrRef?: string;
+  ValDt?: { Dt?: string };
+  BookgDt?: { DtTm?: string };
+  NtryDtls?: { TxDtls?: XmlTxDtls | XmlTxDtls[] };
+};
+
+function extractPartyName(
+  rltdPties: XmlRelatedParties | undefined,
+  cdtDbtInd: "CRDT" | "DBIT",
+): string {
   const partyNode = cdtDbtInd === "CRDT" ? rltdPties?.Dbtr : rltdPties?.Cdtr;
   const name = partyNode?.Pty?.Nm ?? partyNode?.Nm;
   return typeof name === "string" ? name.trim() : "NEPOZNAT";
@@ -50,9 +70,11 @@ export function parseCamt053(xml: string): ParsedIzvodEntry[] {
 
   const entries = asArray(stmt.Ntry);
 
-  return entries.map((ntry: any) => {
+  return entries.map((ntry: XmlEntry) => {
     const cdtDbtInd = ntry.CdtDbtInd as "CRDT" | "DBIT";
-    const amount = Number(ntry.Amt?.["#text"] ?? ntry.Amt);
+    const amountRaw =
+      typeof ntry.Amt === "string" ? ntry.Amt : ntry.Amt?.["#text"];
+    const amount = Number(amountRaw);
     const bankRef = ntry.AcctSvcrRef;
 
     if (!bankRef) {
@@ -61,8 +83,13 @@ export function parseCamt053(xml: string): ParsedIzvodEntry[] {
       );
     }
 
-    const valDt: string = ntry.ValDt?.Dt ?? ntry.BookgDt?.DtTm?.slice(0, 10);
-    const year = valDt?.slice(0, 4);
+    const valDt = ntry.ValDt?.Dt ?? ntry.BookgDt?.DtTm?.slice(0, 10);
+    if (!valDt) {
+      throw new Error(
+        "Stavka izvoda nema datum valute (ValDt/BookgDt) — ne mogu je obraditi",
+      );
+    }
+    const year = valDt.slice(0, 4);
 
     // A single Ntry can in theory contain multiple TxDtls (batched entries);
     // we take the first, since our statements are one entry per transaction.
