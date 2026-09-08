@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getLandlords } from "@/lib/db/queries/landlords";
 import { getAccommodationsByLandlord } from "@/lib/db/queries/accommodations";
 import { getPricelistByAccommodation } from "@/lib/db/queries/pricelist";
@@ -17,10 +18,12 @@ export default async function IznajmljivaciPage() {
     : [];
 
   return (
-    <IznajmljivaciClient
-      landlords={landlords}
-      initialAccommodations={initialAccommodations}
-      initialPricelist={initialPricelist}
-    />
+    <Suspense fallback={null}>
+      <IznajmljivaciClient
+        landlords={landlords}
+        initialAccommodations={initialAccommodations}
+        initialPricelist={initialPricelist}
+      />
+    </Suspense>
   );
 }
