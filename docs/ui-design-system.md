@@ -278,6 +278,13 @@ Radius, border i shadow vrijednosti proizlaze prvenstveno iz aktivne tweakcn/sha
 
 Ne definirati različit border-radius po pojedinim modulima bez razloga.
 
+Aplikacija koristi dvije razine radiusa (vidi i **Form Controls** u poglavlju 14):
+
+- Card i Dialog koriste globalni radius, približno **10 px**
+- Form controls (Input, Select, Textarea, Combobox trigger i slične field-like kontrole) koriste manji radius, približno **6 px**
+
+Ova razlika je namjerna i ne smatra se definiranjem različitog radiusa "po modulu" — riječ je o dosljednom razlikovanju surface elemenata (Card/Dialog) od form control elemenata kroz cijelu aplikaciju.
+
 Shadows koristiti umjereno.
 
 Preferirati jasnu strukturu kroz:
@@ -287,6 +294,8 @@ Preferirati jasnu strukturu kroz:
 - background contrast
 
 umjesto snažnih shadow efekata.
+
+Form controls posebno ne smiju imati izražen shadow/glow efekt na focus stanju — vidi poglavlje 14, sekciju **Form Controls**.
 
 ## 11. Layout
 
@@ -409,6 +418,79 @@ Primjeri:
 - podaci rezervacije
 
 Kod dugih formi koristiti sekcije radi lakšeg skeniranja sadržaja.
+
+### Form Controls
+
+Ovo je **globalni standard** za sve postojeće i buduće forme u aplikaciji, neovisno o modulu.
+
+#### Obuhvaćene kontrole
+
+Standard obuhvaća sve kontrole koje korisniku predstavljaju polje za unos ili izbor podataka, uključujući:
+
+- Input
+- Select
+- Textarea
+- Combobox trigger
+- DatePicker / date trigger
+- Popover trigger koji predstavlja form field
+- ostale field-like kontrole koje vizualno predstavljaju unos ili izbor podataka
+
+#### Vizualni standard
+
+- Radius: približno **6 px**
+- Normal border: semantic token `--input`
+- Hover border: semantic token `--input-hover`
+- Focus border/ring: semantic token `--ring`
+- Focus ring: **1 px**
+- Bez izraženog glow/shadow efekta
+- Visina, padding i tipografija ostaju konzistentni s odgovarajućim shared/shadcn komponentama
+
+#### Hijerarhija radiusa
+
+- Card, Dialog i druge veće površine koriste globalni radius, približno **10 px**
+- Form controls koriste manji radius, približno **6 px**
+
+Globalni Card/Dialog radius se ne smanjuje samo radi usklađivanja s form controls standardom.
+
+#### Semantic tokens
+
+Poslovne forme ne smiju pojedinačno hardkodirati boje border/focus stanja form controlsa.
+
+Preferirani redoslijed pristupa:
+
+1. semantic theme token
+2. shared/shadcn komponenta
+3. lokalni override samo kada tehnička implementacija konkretne kontrole to zahtijeva (npr. raw HTML element koji nije izgrađen kroz centralnu shadcn komponentu)
+
+Trenutno korišteni semantic tokeni:
+
+- `--input` — normal border
+- `--input-hover` — hover border
+- `--ring` — focus border/ring
+
+#### Konzistentnost među tipovima kontrola
+
+Kontrole koje tehnički nisu obični HTML/shadcn Input elementi, ali vizualno predstavljaju form field, moraju slijediti isti standard. To posebno vrijedi za:
+
+- Combobox
+- DatePicker
+- Select trigger
+- Popover trigger
+- druge složene kontrole za izbor vrijednosti
+
+Ne smije se dogoditi da na istoj formi Input, Combobox i DatePicker imaju različit radius, border ili focus stil.
+
+#### Referentna implementacija
+
+Standard je implementiran i provjeren u modulima:
+
+- Iznajmljivači (landlords)
+- Smještajne jedinice (accommodations)
+- Cjenik (pricelist)
+
+To ne znači da standard vrijedi samo za te module. Oni predstavljaju referentnu implementaciju za ostale postojeće i buduće forme aplikacije.
+
+Ostale postojeće forme u drugim modulima trenutno nisu sve usklađene s ovim standardom. Usklađivanje se provodi kontrolirano, modul po modul, kroz zasebne zadatke — ne kao masovni UI refactor.
 
 ## 15. Complex line-item forms
 
@@ -647,6 +729,13 @@ Prije izrade ili većeg redizajna UI-a:
 5. izbjegavati hardkodirane vizualne vrijednosti
 6. identificirati postoji li reusable pattern prije izrade novog
 7. ne mijenjati poslovnu logiku radi vizualnog redizajna
+
+Kod izrade nove forme, dodavanja novog form fielda ili izmjene postojeće forme, Claude Code mora:
+
+- primijeniti Form Controls standard iz poglavlja 14
+- koristiti postojeće shared/shadcn komponente gdje god je to moguće, umjesto lokalnih raw implementacija
+
+Ako postojeća kontrola u formi koja se dira odstupa od Form Controls standarda, Claude Code ne smije automatski provoditi širi refactor izvan scopea trenutnog zadatka. Odstupanje treba zabilježiti (npr. u odgovoru ili `docs/known-issues.md`), a usklađivanje raditi kao zaseban, kontroliran zadatak.
 
 Claude Code ne smije proizvoljno uvoditi:
 
