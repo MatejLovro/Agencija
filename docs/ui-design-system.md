@@ -570,6 +570,19 @@ Po potrebi koristiti:
 - tekstualni status
 - boju kao dodatni signal
 
+### Selectable rows
+
+Za tablice u kojima korisnik selektira redak klikom (npr. Smještajne jedinice, Cjenik) koristiti globalno, konzistentno razlikovanje stanja:
+
+- header: `bg-muted/60`
+- obični red: bez pozadine
+- row hover: `hover:bg-muted/40`
+- selected row: `bg-primary/20 font-medium hover:bg-primary/20`, dodatno naglašeno s `border-l-2 border-l-primary` (obični redovi imaju `border-l-2 border-l-transparent` da se rezervira prostor i selekcija ne pomiče sadržaj retka)
+
+Ne koristiti jaku primary pozadinu ni bijeli tekst za selected red — selekcija mora ostati čitljiva i ne smije djelovati kao primarna akcija/button.
+
+Ova pravila su centralizirana u `selectableTableHeaderClass` i `selectableTableRowClass()` (`src/lib/utils.ts`). Nove tablice sa selekcijom retka trebaju koristiti te helpere umjesto lokalnog dupliciranja klasa.
+
 ## 19. Status badges
 
 Statusi koji se često pojavljuju u UI-u trebaju imati konzistentan badge pattern.

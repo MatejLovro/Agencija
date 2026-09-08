@@ -9,6 +9,7 @@ export async function getAccommodationsByLandlord(landlordId: string) {
       name: accommodations.name,
       brojSoba: accommodations.brojSoba,
       brojKreveta: accommodations.brojKreveta,
+      brojPomocnihLezajeva: accommodations.brojPomocnihLezajeva,
       maxOsoba: accommodations.maxOsoba,
       vrstaApartmana: accommodations.vrstaApartmana,
     })

@@ -35,6 +35,7 @@ import {
   actionCreateAccommodation,
   actionUpdateAccommodation,
 } from "@/lib/actions/landlords";
+import { useFormKeyboardNav } from "@/hooks/use-form-keyboard-nav";
 
 // Tip za red u tablici apartmana — vraćamo gore nakon spremi
 export interface AccommodationRow {
@@ -168,6 +169,7 @@ export function ApartmanModal({
 }: ApartmanModalProps) {
   const [activeTab, setActiveTab] = useState<1 | 2 | 3 | 4>(1);
   const [isPending, setIsPending] = useState(false);
+  const handleFormKeyDown = useFormKeyboardNav();
 
   const isEdit = !!accommodationId;
 
@@ -293,6 +295,7 @@ export function ApartmanModal({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
+            onKeyDown={handleFormKeyDown}
             noValidate
             autoComplete="off"
           >

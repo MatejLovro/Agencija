@@ -57,6 +57,7 @@ export function CityCombobox({
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            data-kbnav-stop
             className={cn(
               "w-full justify-between font-normal bg-muted/40 h-9 rounded-sm border-input hover:border-input-hover focus-visible:ring-1 aria-expanded:border-ring aria-expanded:ring-1 aria-expanded:ring-ring",
               error && "border-destructive",

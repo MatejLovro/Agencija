@@ -3,7 +3,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import {
   Dialog,
@@ -31,6 +31,7 @@ import {
   actionUpdatePricelistEntry,
 } from "@/lib/actions/landlords";
 import { isoToHrDate, hrDateToIso } from "@/lib/utils/dates";
+import { useFormKeyboardNav } from "@/hooks/use-form-keyboard-nav";
 
 export interface PricelistRow {
   id: string;
@@ -69,6 +70,9 @@ export function CjenikModal({
 }: CjenikModalProps) {
   const [isPending, setIsPending] = useState(false);
   const isEdit = !!defaultValues;
+  const handleFormKeyDown = useFormKeyboardNav();
+  const dateFromRef = useRef<HTMLInputElement>(null);
+  const pricePerNightRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PricelistEntryFormValues>({
     resolver: zodResolver(pricelistEntrySchema) as any,
@@ -85,14 +89,25 @@ export function CjenikModal({
   });
 
   useEffect(() => {
-    if (open && !defaultValues) {
+    if (!open) return;
+
+    if (defaultValues) {
+      form.reset({
+        dateFrom: isoToHrDate(defaultValues.dateFrom),
+        dateTo: isoToHrDate(defaultValues.dateTo),
+        pricePerNight: parseFloat(defaultValues.pricePerNight),
+        landlordPrice: defaultValues.landlordPrice
+          ? parseFloat(defaultValues.landlordPrice)
+          : undefined,
+      });
+    } else {
       form.reset({
         ...DEFAULT_VALUES,
         dateFrom: nextDateFrom ?? "",
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, nextDateFrom]);
+  }, [open, defaultValues, nextDateFrom]);
 
   async function onSubmit(data: PricelistEntryFormValues) {
     setIsPending(true);
@@ -158,6 +173,13 @@ export function CjenikModal({
         className="max-w-sm"
         showCloseButton={false}
         aria-describedby={undefined}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          const target = isEdit
+            ? pricePerNightRef.current
+            : dateFromRef.current;
+          target?.focus();
+        }}
       >
         <DialogHeader>
           <DialogTitle className="text-lg font-medium">
@@ -168,6 +190,7 @@ export function CjenikModal({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
+            onKeyDown={handleFormKeyDown}
             noValidate
             autoComplete="off"
           >
@@ -190,6 +213,10 @@ export function CjenikModal({
                           maxLength={10}
                           className="bg-muted/40"
                           {...field}
+                          ref={(el) => {
+                            field.ref(el);
+                            dateFromRef.current = el;
+                          }}
                           onChange={(e) =>
                             field.onChange(formatDateInput(e.target.value))
                           }
@@ -243,13 +270,16 @@ export function CjenikModal({
                           type="number"
                           step="0.01"
                           min="0"
-                          autoFocus
                           className="bg-muted/40"
                           value={field.value ?? ""}
                           onChange={(e) =>
                             field.onChange(parseFloat(e.target.value) || 0)
                           }
                           onFocus={(e) => e.target.select()}
+                          ref={(el) => {
+                            field.ref(el);
+                            pricePerNightRef.current = el;
+                          }}
                         />
                       </FormControl>
                       <span className="text-sm text-muted-foreground w-8">

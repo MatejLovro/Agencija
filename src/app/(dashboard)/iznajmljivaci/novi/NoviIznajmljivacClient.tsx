@@ -10,6 +10,10 @@ import {
   type PricelistRow,
 } from "@/components/iznajmljivaci/CjenikModal";
 import { isoToHrDate } from "@/lib/utils/dates";
+import {
+  selectableTableHeaderClass,
+  selectableTableRowClass,
+} from "@/lib/utils";
 import { actionGetAccommodationById } from "@/lib/actions/landlords";
 import type { AccommodationFormValues } from "@/lib/validations/accomodation";
 
@@ -218,7 +222,7 @@ export function NoviIznajmljivacClient({
 
           <div className="border border-border rounded-md overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted text-muted-foreground border-b border-border">
+              <thead className={selectableTableHeaderClass}>
                 <tr>
                   <th className="text-left px-3 py-2 font-medium">Naziv</th>
                   <th className="text-left px-3 py-2 font-medium">Vrsta</th>
@@ -251,11 +255,9 @@ export function NoviIznajmljivacClient({
                         setSelectedAccommodationId(acc.id);
                         setSelectedPricelistEntryId(null);
                       }}
-                      className={`cursor-pointer border-b border-border last:border-0 transition-colors ${
-                        selectedAccommodationId === acc.id
-                          ? "bg-primary/10"
-                          : "hover:bg-muted/40"
-                      }`}
+                      className={selectableTableRowClass(
+                        selectedAccommodationId === acc.id,
+                      )}
                     >
                       <td className="px-3 py-2">{acc.name}</td>
                       <td className="px-3 py-2 text-muted-foreground">
@@ -331,7 +333,7 @@ export function NoviIznajmljivacClient({
 
           <div className="border border-border rounded-md overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted text-muted-foreground border-b border-border">
+              <thead className={selectableTableHeaderClass}>
                 <tr>
                   <th className="text-left px-3 py-2 font-medium">
                     Datum od
@@ -364,11 +366,9 @@ export function NoviIznajmljivacClient({
                     <tr
                       key={entry.id}
                       onClick={() => setSelectedPricelistEntryId(entry.id)}
-                      className={`cursor-pointer border-b border-border last:border-0 transition-colors ${
-                        selectedPricelistEntryId === entry.id
-                          ? "bg-primary/10"
-                          : "hover:bg-muted/40"
-                      }`}
+                      className={selectableTableRowClass(
+                        selectedPricelistEntryId === entry.id,
+                      )}
                     >
                       <td className="px-3 py-2">
                         {isoToHrDate(entry.dateFrom)}

@@ -31,7 +31,12 @@ import {
   actionUpdateLandlord,
 } from "@/lib/actions/landlords";
 import { CityCombobox } from "./CityCombobox";
-import { capitalizeWords } from "@/lib/utils/formatters";
+import {
+  capitalizeWords,
+  capitalizeFirst,
+  capitalizeIbanPrefix,
+} from "@/lib/utils/formatters";
+import { useFormKeyboardNav } from "@/hooks/use-form-keyboard-nav";
 
 interface City {
   id: number;
@@ -145,9 +150,15 @@ export function LandlordForm({
     });
   }
 
+  const handleFormKeyDown = useFormKeyboardNav();
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        onKeyDown={handleFormKeyDown}
+        noValidate
+      >
         {/* ── Vrsta iznajmljivača ─────────────────────────────── */}
         <section className="bg-card text-card-foreground border border-border rounded-lg shadow-sm p-5 mb-4">
           <h2 className="text-sm font-semibold mb-4 pb-2 border-b border-border">
@@ -216,7 +227,11 @@ export function LandlordForm({
                         autoComplete="new-password"
                         {...field}
                         onChange={(e) =>
-                          field.onChange(capitalizeWords(e.target.value))
+                          field.onChange(
+                            vrsta === "tvrtka"
+                              ? capitalizeFirst(e.target.value)
+                              : capitalizeWords(e.target.value),
+                          )
                         }
                       />
                     </FormControl>
@@ -353,7 +368,7 @@ export function LandlordForm({
                         autoComplete="new-password"
                         {...field}
                         onChange={(e) =>
-                          field.onChange(capitalizeWords(e.target.value))
+                          field.onChange(capitalizeFirst(e.target.value))
                         }
                       />
                     </FormControl>
@@ -410,7 +425,13 @@ export function LandlordForm({
                       IBAN <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input className="bg-muted/40" {...field} />
+                      <Input
+                        className="bg-muted/40"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(capitalizeIbanPrefix(e.target.value))
+                        }
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
