@@ -46,6 +46,7 @@ export interface AccommodationRow {
   brojSoba: number;
   brojKreveta: number;
   brojPomocnihLezajeva: number | null;
+  hasPricelist?: boolean;
 }
 
 interface City {

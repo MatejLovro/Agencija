@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { accommodations } from "@/lib/db/schema";
-import { asc, eq } from "drizzle-orm";
+import { accommodations, pricelist } from "@/lib/db/schema";
+import { asc, eq, sql } from "drizzle-orm";
 
 export async function getAccommodationsByLandlord(landlordId: string) {
   return db
@@ -12,9 +12,12 @@ export async function getAccommodationsByLandlord(landlordId: string) {
       brojPomocnihLezajeva: accommodations.brojPomocnihLezajeva,
       maxOsoba: accommodations.maxOsoba,
       vrstaApartmana: accommodations.vrstaApartmana,
+      hasPricelist: sql<boolean>`count(${pricelist.id}) > 0`,
     })
     .from(accommodations)
+    .leftJoin(pricelist, eq(pricelist.accommodationId, accommodations.id))
     .where(eq(accommodations.landlordId, landlordId))
+    .groupBy(accommodations.id)
     .orderBy(asc(accommodations.createdAt));
 }
 

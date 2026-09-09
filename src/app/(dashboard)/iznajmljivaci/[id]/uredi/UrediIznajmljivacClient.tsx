@@ -2,8 +2,14 @@
 
 import { useState, useTransition, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft, ChevronDown, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { LandlordForm } from "@/components/iznajmljivaci/LandlordForm";
 import { UnsavedChangesDialog } from "@/components/iznajmljivaci/UnsavedChangesDialog";
 import {
@@ -119,6 +125,20 @@ export function UrediIznajmljivacClient({
     ? (pricelist[selectedAccommodationId] ?? [])
     : [];
 
+  // "Kopiraj cjenik na prazne" je enabled samo ako označena jedinica ima
+  // cjenik I postoji barem jedna druga jedinica istog iznajmljivača bez
+  // cjenika. hasPricelist dolazi iz getAccommodationsByLandlord (agregat
+  // preko JOIN-a) — ne iz lazy-loadanog pricelist state-a, jer taj state
+  // za neodabrane jedinice ne postoji pa se ne smije tumačiti kao "prazan".
+  const selectedAccommodation = accommodations.find(
+    (a) => a.id === selectedAccommodationId,
+  );
+  const canCopyPricelistToEmpty =
+    !!selectedAccommodation?.hasPricelist &&
+    accommodations.some(
+      (a) => a.id !== selectedAccommodationId && !a.hasPricelist,
+    );
+
   function handleSelectAccommodation(id: string) {
     setSelectedAccommodationId(id);
     setSelectedPricelistEntryId(null);
@@ -217,6 +237,12 @@ export function UrediIznajmljivacClient({
     setModalOpen(true);
   }
 
+  function handleCopyPricelistToEmpty() {
+    // Placeholder za 3. korak: confirmation dijalog + server action koji
+    // kopira redove cjenika iz označene jedinice u sve jedinice istog
+    // iznajmljivača koje trenutno nemaju nijedan redak cjenika.
+  }
+
   return (
     <div className="max-w-[1200px] w-full mx-auto px-4 py-6 bg-background">
       <div className="flex items-center justify-between mb-5">
@@ -242,12 +268,29 @@ export function UrediIznajmljivacClient({
 
       <div className="mt-8 mb-6" />
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-[3fr_2fr] gap-6">
         {/* LIJEVO — Tablica smještajnih jedinica */}
         <div className="bg-card text-card-foreground border border-border rounded-lg shadow-sm p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold">Smještajne jedinice</h2>
             <div className="flex gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" size="sm" variant="outline">
+                    Cjenik
+                    <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    disabled={!canCopyPricelistToEmpty}
+                    onSelect={handleCopyPricelistToEmpty}
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-2" />
+                    Kopiraj cjenik na prazne
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 type="button"
                 size="sm"
@@ -393,10 +436,10 @@ export function UrediIznajmljivacClient({
             <table className="w-full text-sm">
               <thead className={selectableTableHeaderClass}>
                 <tr>
-                  <th className="text-left px-3 py-2 font-medium">
+                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap w-px">
                     Datum od
                   </th>
-                  <th className="text-left px-3 py-2 font-medium">
+                  <th className="text-left px-3 py-2 font-medium whitespace-nowrap w-px">
                     Datum do
                   </th>
                   <th className="text-right px-3 py-2 font-medium">
@@ -428,14 +471,16 @@ export function UrediIznajmljivacClient({
                         selectedPricelistEntryId === entry.id,
                       )}
                     >
-                      <td className="px-3 py-2">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         {isoToHrDate(entry.dateFrom)}
                       </td>
-                      <td className="px-3 py-2">{isoToHrDate(entry.dateTo)}</td>
-                      <td className="px-3 py-2 text-right font-medium">
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {isoToHrDate(entry.dateTo)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium whitespace-nowrap">
                         {formatHrDecimal(parseFloat(entry.pricePerNight), 2)} €
                       </td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">
+                      <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">
                         {entry.landlordPrice
                           ? `${formatHrDecimal(parseFloat(entry.landlordPrice), 2)} €`
                           : "—"}
@@ -459,10 +504,15 @@ export function UrediIznajmljivacClient({
         onSaved={(row) => {
           if (editingAccommodation) {
             setAccommodations((prev) =>
-              prev.map((a) => (a.id === row.id ? row : a)),
+              prev.map((a) =>
+                a.id === row.id ? { ...row, hasPricelist: a.hasPricelist } : a,
+              ),
             );
           } else {
-            setAccommodations((prev) => [...prev, row]);
+            setAccommodations((prev) => [
+              ...prev,
+              { ...row, hasPricelist: false },
+            ]);
             setSelectedAccommodationId(row.id);
           }
           setModalOpen(false);
@@ -493,6 +543,15 @@ export function UrediIznajmljivacClient({
                   )
                 : [...(prev[selectedAccommodationId] ?? []), row],
             }));
+            if (!editingPricelistEntry) {
+              setAccommodations((prev) =>
+                prev.map((a) =>
+                  a.id === selectedAccommodationId
+                    ? { ...a, hasPricelist: true }
+                    : a,
+                ),
+              );
+            }
             setCjenikModalOpen(false);
             setEditingPricelistEntry(null);
           }}
