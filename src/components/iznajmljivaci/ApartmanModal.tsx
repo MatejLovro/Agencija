@@ -36,6 +36,7 @@ import {
   actionUpdateAccommodation,
 } from "@/lib/actions/landlords";
 import { useFormKeyboardNav } from "@/hooks/use-form-keyboard-nav";
+import { useIntegerFieldNormalize } from "@/hooks/use-integer-field-normalize";
 
 // Tip za red u tablici apartmana — vraćamo gore nakon spremi
 export interface AccommodationRow {
@@ -192,6 +193,30 @@ export function ApartmanModal({
       defaultValues ?? getDefaultValues(landlordCityId, landlordAddress),
   });
 
+  const brojSobaNormalize = useIntegerFieldNormalize(form, "brojSoba");
+  const brojKrevetaNormalize = useIntegerFieldNormalize(form, "brojKreveta");
+  const brojPomocnihLezajevaNormalize = useIntegerFieldNormalize(
+    form,
+    "brojPomocnihLezajeva",
+  );
+  const brojKupaonicaNormalize = useIntegerFieldNormalize(
+    form,
+    "brojKupaonica",
+  );
+  const katNormalize = useIntegerFieldNormalize(form, "kat");
+  const udaljenostMoreNormalize = useIntegerFieldNormalize(
+    form,
+    "udaljenostMore",
+  );
+  const udaljenostCentarNormalize = useIntegerFieldNormalize(
+    form,
+    "udaljenostCentar",
+  );
+  const udaljenostTrgovinaNormalize = useIntegerFieldNormalize(
+    form,
+    "udaljenostTrgovina",
+  );
+
   async function onSubmit(data: AccommodationFormValues) {
     setIsPending(true);
     try {
@@ -207,6 +232,13 @@ export function ApartmanModal({
         brojKreveta: result.brojKreveta,
         brojPomocnihLezajeva: result.brojPomocnihLezajeva ?? null,
       });
+
+      // Nakon uspješnog spremanja (create ili edit): sljedeće otvaranje
+      // (Dodaj ili Uredi) mora uvijek početi na prvoj kartici, bez obzira
+      // na koju je karticu korisnik prebacio prije spremanja. Modal ostaje
+      // mountiran između otvaranja, pa activeTab ne bi inače resetirao
+      // sam od sebe.
+      setActiveTab(1);
 
       onClose();
     } catch (error) {
@@ -520,6 +552,8 @@ export function ApartmanModal({
                                   field.onChange(parseInt(e.target.value) || 1)
                                 }
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={brojSobaNormalize.onKeyDown}
+                                onBlur={brojSobaNormalize.onBlur}
                               />
                             </FormControl>
                             <FormMessage />
@@ -546,6 +580,8 @@ export function ApartmanModal({
                                   field.onChange(parseInt(e.target.value) || 1)
                                 }
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={brojKrevetaNormalize.onKeyDown}
+                                onBlur={brojKrevetaNormalize.onBlur}
                               />
                             </FormControl>
                             <FormMessage />
@@ -574,6 +610,8 @@ export function ApartmanModal({
                                       : parseInt(e.target.value),
                                   )
                                 }
+                                onKeyDown={brojPomocnihLezajevaNormalize.onKeyDown}
+                                onBlur={brojPomocnihLezajevaNormalize.onBlur}
                                 onFocus={(e) => e.target.select()}
                               />
                             </FormControl>
@@ -763,6 +801,8 @@ export function ApartmanModal({
                                   )
                                 }
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={brojKupaonicaNormalize.onKeyDown}
+                                onBlur={brojKupaonicaNormalize.onBlur}
                               />
                             </FormControl>
                             <FormMessage />
@@ -791,6 +831,8 @@ export function ApartmanModal({
                                   )
                                 }
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={katNormalize.onKeyDown}
+                                onBlur={katNormalize.onBlur}
                               />
                             </FormControl>
                             <FormMessage />
@@ -900,6 +942,8 @@ export function ApartmanModal({
                                   )
                                 }
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={udaljenostMoreNormalize.onKeyDown}
+                                onBlur={udaljenostMoreNormalize.onBlur}
                               />
                             </FormControl>
                             <FormMessage />
@@ -927,6 +971,8 @@ export function ApartmanModal({
                                   )
                                 }
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={udaljenostCentarNormalize.onKeyDown}
+                                onBlur={udaljenostCentarNormalize.onBlur}
                               />
                             </FormControl>
                             <FormMessage />
@@ -954,6 +1000,8 @@ export function ApartmanModal({
                                   )
                                 }
                                 onFocus={(e) => e.target.select()}
+                                onKeyDown={udaljenostTrgovinaNormalize.onKeyDown}
+                                onBlur={udaljenostTrgovinaNormalize.onBlur}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1073,7 +1121,7 @@ export function ApartmanModal({
                 Odustani
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Pohranjivanje..." : "Pohrani"}
+                {isPending ? "Spremanje..." : "Spremi"}
               </Button>
             </div>
           </form>

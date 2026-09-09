@@ -391,6 +391,33 @@ Opća pravila:
 - greška se prikazuje uz relevantno polje
 - invalid state mora biti vizualno uočljiv
 - disabled i read-only stanja moraju biti jasna
+- placeholder mora ostati jasno vizualno sekundaran u odnosu na stvarno unesenu vrijednost — koristiti standardni `placeholder:text-muted-foreground` (već dio zajedničke `Input` komponente), ne hardkodiranu boju; primjeri poput brojčanih vrijednosti (npr. poštanski broj) trebaju imati prefiks tipa "npr." da se izbjegne dojam da je vrijednost već unesena
+
+### Početni fokus
+
+Početni fokus pri otvaranju forme može ovisiti o create/edit kontekstu iste komponente — nije nužno identičan u oba slučaja.
+
+Primjer: forma iznajmljivača (`LandlordForm`) pri dodavanju novog iznajmljivača fokusira prvi element skupine "Vrsta iznajmljivača" (radio buttoni), dok pri uređivanju postojećeg iznajmljivača fokusira prvo input polje s podacima (Prezime / Naziv obrta / Naziv tvrtke), jer je vrsta već poznata i korisnik obično nastavlja izmjenu konkretnih podataka.
+
+Postavljanje početnog fokusa ne smije:
+
+- mijenjati postojeće podatke forme,
+- uzrokovati dirty-state (npr. `formState.isDirty` ne smije postati `true` samo zbog fokusiranja),
+- ovisiti o proizvoljnom timeoutu — koristiti React/RHF mehanizam koji pouzdano radi nakon inicijalizacije vrijednosti forme (npr. `ref` na polje + `useEffect` pri mountu).
+
+### Enter navigacija (`useFormKeyboardNav`)
+
+Globalna Enter-navigacija kroz forme (`src/hooks/use-form-keyboard-nav.ts`) mora poštovati isti logički redoslijed elemenata kao native Tab navigacija.
+
+Pravilo za pojedine tipove kontrola:
+
+- **Input / Textarea** — Enter pomiče fokus na sljedeći element (uz standardne iznimke za Ctrl+Enter/Shift+Enter u textarei).
+- **Checkbox** (Radix `<button role="checkbox">`, samostalan tab-stop) — mora biti uključen u Enter navigaciju kao i svako drugo polje. Enter ne smije preventirati native aktivaciju (toggle) checkboxa — kontrola se i dalje mijenja kao inače, a fokus se dodatno pomiče na sljedeći element, isto kao kad Enter u inputu potvrđuje vrijednost i nastavlja dalje.
+- **Radio grupa** (Radix `<button role="radio">`) — ostaje isključena iz Enter navigacije. Tab/fokus ide na cijelu grupu (jedan tabbable item po grupi), ne na pojedinačne opcije, pa tu Enter ne smije umjetno stvarati zaseban tab-stop po opciji.
+- **Select / Combobox / Command / DatePicker i slični widgeti s vlastitom Enter semantikom** — ostaju izuzeti (`data-kbnav-ignore` ili odgovarajući `role`/selector u `IGNORE_SELECTOR`); Enter unutar takvog widgeta bira vrijednost, ne pomiče fokus na formi.
+- **Submit gumb** — Enter izvršava native submit, handler se ne miješa.
+
+Ako se u formu doda nova vrsta kontrole koja je samostalan tab-stop (ne dio grupe s jednim tabbable itemom), Enter navigacija mora tu kontrolu tretirati kao i svako drugo polje — ne popravljati pojedinačne slučajeve hardkodirano, nego kroz opći filter u `getNavItems`.
 
 ### Legenda obaveznih polja
 
@@ -524,7 +551,63 @@ Ne uvoditi različite stilove date inputa po pojedinim ekranima.
 
 Ako se koristi projektna custom date komponenta, preferirati je u odnosu na lokalne implementacije.
 
-## 17. Combobox i selection fields
+### Ubrzani unos datuma (normalizacija)
+
+Text-based datumska polja (`dd.mm.gggg.`) trebaju podržavati skraćeni, brzi unos koji se pri napuštanju polja normalizira u puni format. Standardna implementacija:
+
+- `normalizeHrDateInput()` u `src/lib/utils/dates.ts` — čista funkcija, eksplicitno parsira dan/mjesec/godinu (ne koristi `new Date(string)` parsiranje) i ručno validira stvarnu kalendarsku ispravnost (uključujući prijestupne godine).
+- `useDateFieldNormalize()` hook u `src/hooks/use-date-field-normalize.ts` — reusable veza s React Hook Form; vraća `{ onKeyDown, onBlur }` koje se dodaju na `Input` uz postojeći `field.onChange` (live-typing formatiranje interpunkcije ostaje nepromijenjeno).
+
+Pravila normalizacije:
+
+- `1` / `01` → dan, trenutni mjesec i godina (vodeća nula opcionalna samo za jednodnevni unos)
+- `0108` / `01.08` → dan i mjesec, trenutna godina
+- `01082025` / `01.08.2025` / `01.08.2025.` → potpun datum
+- dvosmisleni unosi (npr. `108`) se ne interpretiraju — vraća se `null`, vrijednost u polju ostaje netaknuta i postojeća Zod/RHF validacija prijavljuje grešku standardnim putem
+
+Normalizacija se izvršava na Enter, Tab i blur mišem — ne pri svakom tipkanju — i mora biti idempotentna (ponovna normalizacija već normaliziranog datuma ne smije promijeniti vrijednost niti lažno označiti formu dirty). Ne smije mijenjati ili duplicirati postojeću globalnu keyboard navigaciju (`useFormKeyboardNav`) — normalizacija se izvršava prije nego event nastavi svojim uobičajenim tokom, bez `preventDefault`/`stopPropagation`.
+
+Nova datumska polja u aplikaciji trebaju koristiti ovaj hook umjesto lokalne/duplicirane logike.
+
+## 17. Numeric fields
+
+`<input type="number">` može privremeno prikazati vodeće nule koje ne odgovaraju stvarnoj vrijednosti (npr. korisnik upiše "0" pa "10" — DOM prikaz ostane "010" dok se vrijednost stvarno već ispravno spremila kao broj 10). Standardna implementacija:
+
+- `normalizeLeadingZeros()` u `src/lib/utils/numbers.ts` — čista funkcija, uklanja suvišne vodeće nule iz cjelobrojnog dijela numeričkog stringa; decimalni dio (ako postoji) ostaje netaknut (`"010.5"` → `"10.5"`), a `"0"`/`"00"` ostaje `"0"`.
+- `useIntegerFieldNormalize()` hook u `src/hooks/use-integer-field-normalize.ts` — reusable veza s React Hook Form; vraća `{ onKeyDown, onBlur }`. Ako normalizirana vrijednost predstavlja istu numeričku vrijednost koja je već u RHF stateu, samo se osvježi DOM prikaz (`input.value`) bez poziva `setValue` — ne uzrokuje lažni dirty-state.
+
+Normalizacija se izvršava na Enter, Tab i blur mišem — ne pri svakom tipkanju. Ne mijenja spremljenu numeričku vrijednost niti postojeću min/max validaciju, samo ispravlja DOM prikaz. Ne diraj globalnu keyboard navigaciju (`useFormKeyboardNav`) — normalizacija se izvršava prije nego event nastavi svojim uobičajenim tokom, bez `preventDefault`/`stopPropagation`.
+
+Referentna implementacija: "Br. soba" / "Br. kreveta" / "Pom. ležajevi" i ostala **cjelobrojna** numerička polja (`ApartmanModal`). Nova integer polja trebaju koristiti ovaj hook umjesto lokalne/duplicirane logike.
+
+Ovo pravilo vrijedi za cjelobrojna polja. Za decimalne brojeve (novčani iznosi, postoci, količine s decimalama) vidi poglavlje 17a — ne koristiti `useIntegerFieldNormalize` na decimalnom polju.
+
+### 17a. Decimal fields — hrvatski format
+
+Aplikacija je namijenjena hrvatskim korisnicima, pa se decimalni brojevi prikazuju u hrvatskom formatu: `,` je decimalni separator, `.` je separator tisućica (npr. `1.234,56`). RHF/Zod/Drizzle/PostgreSQL i dalje rade isključivo s običnim JS `number` vrijednostima (npr. `1234.56`) — ovo je čisto UI formatting pravilo, ne mijenja se način spremanja u bazu.
+
+Standardna implementacija:
+
+- `src/lib/utils/decimal.ts` — `parseHrDecimal(string): number | null` (eksplicitan parser; ne koristiti `Number()`/`parseFloat()` direktno nad hrvatskim stringom kao `"1.234,56"` — to nije ispravan JS numerički format), `formatHrDecimal(number, decimals): string` (koristi `Intl.NumberFormat("hr-HR")`), `normalizeDecimalKey()` (live-typing `.` → `,` zamjena).
+- `src/components/ui/decimal-input.tsx` — reusable `<DecimalInput>` komponenta. Koristi se kao `<DecimalInput {...field} decimals={2} />` unutar `FormField`.
+
+**Zašto komponenta, ne samo hook**: `<input>` mora biti controlled preko **internog display-string state-a**, ne preko RHF `field.value` (broja) direktno — inače bi svaki `setValue()`/re-render prisilio prikaz plain JS broja (`"1234.56"`) i pregazio hrvatski format. `DecimalInput` prema RHF-u izlaže `value: number | null` / `onChange(value: number | null)`, a interno drži `displayValue` (hrvatski string, uključujući privremeno nedovršen unos tijekom tipkanja).
+
+Ponašanje:
+
+- Tijekom tipkanja: nema agresivnog formatiranja (bez separatora tisućica), korisnik slobodno tipka `1234,56`. Nevažeći/nedovršen unos (`"12,"`, `",5"` je iznimka i validan kao 0.5, `"abc"`) postavlja RHF vrijednost na `null` — ne zadržava se prethodna valjana vrijednost, forma ne izgleda lažno validna.
+- Na Enter/Tab/blur: ako je unos valjan broj, formatira se u puni hrvatski prikaz (`formatHrDecimal`) i ta vrijednost se emitira u RHF. Ako je nevažeći, prikazani string ostaje netaknut (korisnik i dalje vidi svoj unos), RHF vrijednost ostaje `null`, i postojeća Zod validacija to standardno prijavljuje.
+- Tipka `.` na numeričkoj tipkovnici: dok prikazani string još ne sadrži `,`, `.` se tretira kao pokušaj decimalnog separatora i zamjenjuje se s `,`. Već formatiran broj s `.` kao separatorom tisućica se ne dira (razlikovanje po tome sadrži li string već `,`, ne po cursor poziciji).
+- Broj decimalnih mjesta je obavezan parametar (`decimals`) — ne pretpostavlja se 2 za sva polja; novčani iznosi za sada koriste 2.
+- Sync iz RHF-a natrag u display (reset, initial mount) razlikuje echo vlastitog `onChange`-a od stvarne eksterne promjene preko redoslijeda poziva (interni `justEmittedRef`), ne preko usporedbe brojčanih vrijednosti — jer pozivatelj smije transformirati emitiranu vrijednost (npr. `onChange={(v) => field.onChange(v ?? 0)}`) prije nego stigne u RHF.
+
+Referentna implementacija: "Iznos provizije" (`LandlordForm`), "Cijena za gosta" i "Cijena prema iznajmljivaču" (`CjenikModal`). Ostala decimalna polja u aplikaciji (stavke ponude, predujam) migriraju se kontrolirano, kao zasebni zadaci.
+
+**Decimalne vrijednosti u korisničkom sučelju uvijek se prikazuju u hrvatskom formatu: decimalni separator `,`, separator tisućica `.`, uz broj decimalnih mjesta definiran semantikom polja.** Ovo vrijedi i za read-only prikaz (tablice, pregledi), ne samo za input polja — koristiti `formatHrDecimal(broj, decimals)` iz `src/lib/utils/decimal.ts`, ne `toFixed()`/`String()`/ručnu zamjenu znakova (npr. `.replace(".", ",")`). `toFixed()` sam po sebi vraća plain JS decimalnu točku i ne dodaje separator tisućica.
+
+Referentna implementacija za tablični prikaz: stupci cijena u tablici Cjenik (`iznajmljivaci-client.tsx`, `UrediIznajmljivacClient.tsx`).
+
+## 18. Combobox i selection fields
 
 Za izbor vrijednosti iz većeg skupa koristiti odgovarajući combobox/select pattern.
 
@@ -534,7 +617,20 @@ Ako poslovni proces dopušta kreiranje nove vrijednosti tijekom unosa, koristiti
 
 Ne duplicirati logiku "odaberi ili kreiraj" u svakom modulu zasebno.
 
-## 18. Tables
+### Lokalni keyboard shortcuti
+
+Specifična akcija unutar comboboxa (npr. "dodaj novu vrijednost") može imati lokalni keyboard shortcut koji vrijedi samo dok je fokus unutar tog comboboxa/njegovog dropdowna — ne globalno za cijelu stranicu.
+
+Uvjeti:
+
+- shortcut mora biti jasno prikazan korisniku u UI-u (npr. u tekstu akcije: "Dodaj novi grad (Ins)..."), ne skriven;
+- ne smije upisivati znak u polje za pretragu niti mijenjati fokus/filtriranje;
+- mora pozivati isti postojeći handler kao klik mišem — ne duplicirati logiku otvaranja akcije;
+- ne smije narušiti standardnu combobox navigaciju (Arrow Up/Down, Enter za odabir, Escape, Tab) niti globalnu Enter navigaciju forme (`useFormKeyboardNav`).
+
+Referentna implementacija: `CityCombobox` — tipka `Insert` otvara "Dodaj novi grad" dijalog dok je fokus unutar comboboxa (search input ili lista rezultata), identično kao klik na akciju na dnu liste.
+
+## 19. Tables
 
 Tablice su jedan od najvažnijih UI elemenata aplikacije.
 
@@ -591,7 +687,7 @@ Ne koristiti jaku primary pozadinu ni bijeli tekst za selected red — selekcija
 
 Ova pravila su centralizirana u `selectableTableHeaderClass` i `selectableTableRowClass()` (`src/lib/utils.ts`). Nove tablice sa selekcijom retka trebaju koristiti te helpere umjesto lokalnog dupliciranja klasa.
 
-## 19. Status badges
+## 20. Status badges
 
 Statusi koji se često pojavljuju u UI-u trebaju imati konzistentan badge pattern.
 
@@ -609,7 +705,7 @@ Badge boje trebaju koristiti semantičke statuse.
 
 Ne definirati proizvoljan badge stil u svakom modulu.
 
-## 20. Dialogs, sheets i drawers
+## 21. Dialogs, sheets i drawers
 
 Koristiti shadcn komponente prema namjeni.
 
@@ -636,6 +732,34 @@ Koristiti kada je forma ili workflow dovoljno kompleksan da zahtijeva vlastiti r
 
 Ne pokušavati svaki proces smjestiti u modal.
 
+### Izolacija ugniježđenih modalnih formi
+
+Kad se modal s vlastitom formom (npr. "Dodaj grad / mjesto") otvara iz kontrole koja je sama dio veće forme (npr. combobox unutar `FormField`-a), Dialog sadržaj je DOM-strukturno portaliziran (obično u `document.body`) — ali **ostaje dijete u React component tree-u** na mjestu gdje je renderiran u JSX-u. React sintetički eventi (uključujući `submit` i `keydown`) bubblaju kroz React stablo, ne kroz DOM stablo — pa `submit`/Enter iz portalizirane modalne forme može procuriti do vanjske roditeljske `<form>` i pokrenuti njezinu validaciju/submit, iako to vizualno i DOM-strukturno izgleda kao potpuno odvojena forma.
+
+Pravilo: modal s vlastitom formom ugniježđen (u React smislu) unutar druge forme mora pozvati `e.stopPropagation()` u svom `onSubmit` i `onKeyDown` handleru na `<form>` elementu, kako bi bio zasebna interakcijska cjelina. Ovo nije proizvoljan `stopPropagation` workaround — rješava specifičnu, dokumentiranu osobitost React portala, primijenjenu točno na `submit`/`keydown` razini gdje event inače procuri.
+
+Referentna implementacija: `AddCityDialog` (otvara se iz `CityCombobox`, korištenog unutar `LandlordForm` i `ApartmanModal`).
+
+### Početna kartica kod multi-tab create formi
+
+Kod otvaranja forme za unos novog zapisa početna kartica uvijek mora biti prva/logički početna kartica, ne kartica koja je bila aktivna u prethodnom radu.
+
+Modal s više kartica (tabova) obično ostaje mountiran između otvaranja (samo `open` prop Dialoga se mijenja) — lokalni state za aktivnu karticu zato ne resetira se sam od sebe. Ako se taj state resetira samo pri zatvaranju preko standardnog "Odustani"/Escape puta (npr. `handleClose()`), a uspješan submit poziva `onClose()` izravno (mimo tog resetnog puta), aktivna kartica ostaje "zaglavljena" na onoj koju je korisnik zadnje koristio — sljedeće otvaranje za novi zapis krivo započinje na toj kartici umjesto na prvoj.
+
+Pravilo: reset aktivne kartice na prvu mora biti eksplicitan dio **svakog** puta kojim se create-mode forma smatra "završenom" (uspješan submit, Odustani, Escape) — ne samo jednog od njih. Za edit mode ne mijenjati ponašanje osim ako je dio istog popravka.
+
+Referentna implementacija: `ApartmanModal` (`activeTab` reset u `onSubmit` create grani, uz postojeći reset u `handleClose`).
+
+### Focus return nakon zatvaranja modala otvorenog iz druge kontrole
+
+Kad se modal otvori iz kontrole koja sama nestaje/zatvara se u tom trenutku (npr. Popover/Combobox koji se zatvara prije nego se modal otvori), Radixov default `onCloseAutoFocus` ponašanje ("vrati fokus na element koji je bio fokusiran prije otvaranja") može biti nepouzdano jer ta referenca više ne postoji u DOM-u na isti način.
+
+Pravilo: kontrola koja je otvorila modal (ne sam modal) treba ostati vlasnik svog trigger-ref-a i eksplicitno odlučiti kamo se fokus vraća, preko `onCloseAutoFocus` propa na `DialogContent` (`event.preventDefault()` + `triggerRef.current?.focus()`). Modal komponenta samo prosljeđuje taj Radix hook prema van (opcionalni prop) — ne zna i ne treba znati ništa o konkretnoj kontroli koja ga je otvorila, čime ostaje reusable.
+
+To mora vrijediti za sve puteve zatvaranja modala (Escape, Odustani, uspješan submit) jer svi prolaze kroz isti `onOpenChange`/`onCloseAutoFocus` mehanizam.
+
+Referentna implementacija: `CityCombobox` (vlasnik `triggerRef`) + `AddCityDialog` (prosljeđuje `onCloseAutoFocus`).
+
 ### Save vs. izlazak iz radnog konteksta
 
 Za veće radne ekrane (npr. uređivanje zapisa s više povezanih cjelina — osnovni podaci, podređeni zapisi, tablice) vrijedi:
@@ -657,7 +781,7 @@ Preferirani mehanizam (kad projekt nema drugi postojeći globalni state za ovu s
 
 Referentna implementacija: `/iznajmljivaci` (query param `selected`).
 
-## 21. Feedback
+## 22. Feedback
 
 Korisnik mora dobiti jasnu povratnu informaciju za važne akcije.
 
@@ -682,7 +806,7 @@ Prazna lista ne smije izgledati kao greška.
 
 Prikazati jasno objašnjenje i, kada je korisno, moguću sljedeću akciju.
 
-## 22. Icons
+## 23. Icons
 
 Koristiti:
 
@@ -704,7 +828,7 @@ Primjer:
 - ispis / PDF
 - slanje
 
-## 23. Responsive behavior
+## 24. Responsive behavior
 
 Primarni cilj aplikacije je desktop poslovni rad.
 
@@ -726,7 +850,7 @@ Na manjim ekranima dopušteno je:
 
 Ne uništavati desktop produktivnost kako bi kompleksni operativni ekran izgledao idealno na mobitelu.
 
-## 24. Accessibility
+## 25. Accessibility
 
 Koristiti semantičke HTML elemente i accessibility mogućnosti koje pruža shadcn/Radix.
 
@@ -741,7 +865,7 @@ Interaktivni elementi moraju:
 
 Custom komponente ne smiju uklanjati accessibility ponašanje koje standardna shadcn/Radix komponenta već pruža.
 
-## 25. Module-specific design
+## 26. Module-specific design
 
 Poslovni moduli mogu zahtijevati vlastite UI obrasce.
 
@@ -760,7 +884,7 @@ Dokumentirati ih u:
 
 Ovaj dokument treba sadržavati samo pravila koja trebaju ostati konzistentna između više modula.
 
-## 26. Pravila za Claude Code
+## 27. Pravila za Claude Code
 
 Prije izrade ili većeg redizajna UI-a:
 
@@ -790,7 +914,7 @@ Claude Code ne smije proizvoljno uvoditi:
 
 Ako postojeći design system nije dovoljan za novu potrebu, prvo treba predložiti proširenje zajedničkog sustava.
 
-## 27. Razvoj i dorada dizajna
+## 28. Razvoj i dorada dizajna
 
 Design system nije završen jednom zauvijek.
 
@@ -809,7 +933,7 @@ Promjene trebaju biti provedene kroz zajedničke tokene i reusable komponente gd
 
 Cilj je omogućiti evoluciju dizajna bez velikih refaktora poslovnih modula.
 
-## 28. Granice ovog dokumenta
+## 29. Granice ovog dokumenta
 
 Ovaj dokument ne treba sadržavati:
 

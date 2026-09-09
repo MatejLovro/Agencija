@@ -57,13 +57,18 @@ function getNavItems(form: HTMLFormElement): HTMLElement[] {
     if (!isFocusable(el)) return false;
     if (el.tagName === "BUTTON") {
       const role = el.getAttribute("role");
-      // Radix Checkbox/RadioGroupItem su <button role="checkbox"/"radio">
-      // bez eksplicitnog type atributa (property .type tada defaultira na
-      // "submit" po HTML spec-u) — moraju biti isključeni iz Enter navigacije,
-      // to su toggle kontrole, ne sekvencijalna polja za unos.
-      if (role === "checkbox" || role === "radio") return false;
+      // Radix RadioGroupItem je <button role="radio"> — dio grupe u kojoj
+      // Tab/native fokus ide na cijelu grupu (jedan tabbable item), ne na
+      // pojedinačne opcije, pa ostaje isključen iz Enter navigacije.
+      if (role === "radio") return false;
+      // Radix Checkbox je <button role="checkbox"> i, za razliku od
+      // RadioGroupItem, SAMOSTALAN je tab-stop (svaki checkbox ima vlastiti
+      // tabIndex=0) — mora biti uključen da Enter poštuje isti redoslijed
+      // kao native Tab.
+      if (role === "checkbox") return true;
       // Koristi type ATRIBUT (ne .type property) da izbjegnemo lažni
-      // "submit" default za buttone kojima type nije eksplicitno postavljen.
+      // "submit" default za buttone kojima type nije eksplicitno postavljen
+      // (Radix komponente bez explicit type="button").
       const typeAttr = el.getAttribute("type");
       // Uključi samo eksplicitno submit gumb (ili elemente označene kao stop)
       return typeAttr === "submit" || el.hasAttribute("data-kbnav-stop");
@@ -90,6 +95,9 @@ export function useFormKeyboardNav() {
       return;
     }
 
+    const isCheckbox =
+      target.tagName === "BUTTON" && target.getAttribute("role") === "checkbox";
+
     if (target.tagName === "TEXTAREA") {
       if (e.ctrlKey || e.shiftKey) {
         // Novi red — pusti default, ne diraj fokus.
@@ -98,6 +106,11 @@ export function useFormKeyboardNav() {
       e.preventDefault();
     } else if (target.tagName === "INPUT") {
       e.preventDefault();
+    } else if (isCheckbox) {
+      // Ne prevenirati default: native <button> Enter-aktivacija (toggle)
+      // mora ostati netaknuta — checkbox se i dalje mijenja kao inače.
+      // Fokus svejedno pomičemo dalje da Enter poštuje isti redoslijed
+      // kao Tab.
     } else {
       return;
     }

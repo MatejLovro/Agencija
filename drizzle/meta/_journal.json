@@ -36,6 +36,13 @@
       "when": 1780040479862,
       "tag": "0004_handy_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788961065893,
+      "tag": "0005_curvy_titanium_man",
+      "breakpoints": true
     }
   ]
 }

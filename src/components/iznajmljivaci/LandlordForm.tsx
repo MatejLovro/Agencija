@@ -3,7 +3,7 @@
 import { useForm, type DefaultValues, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useTransition, useEffect } from "react";
+import { useTransition, useEffect, useRef } from "react";
 import { Save, X, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,6 +38,7 @@ import {
   capitalizeIbanPrefix,
 } from "@/lib/utils/formatters";
 import { useFormKeyboardNav } from "@/hooks/use-form-keyboard-nav";
+import { useDateFieldNormalize } from "@/hooks/use-date-field-normalize";
 
 interface City {
   id: number;
@@ -54,6 +56,14 @@ interface LandlordFormProps {
    * (parent tada sam odlučuje treba li prikazati unsaved-changes confirmation).
    */
   onRequestExit?: () => void;
+  /**
+   * Preskače edit-mode početni autofocus na Prezime. Koristi se isključivo
+   * za create -> canonical edit prijelaz (nakon prvog spremanja novog
+   * iznajmljivača) — tamo je isEdit=true jer je forma mountirana na edit
+   * ruti, ali korisnik nije stvarno "ušao" u edit preko Promijeni, pa fokus
+   * na Prezime ne smije sugerirati da odmah ponovno uređuje taj podatak.
+   */
+  skipInitialFocus?: boolean;
 }
 
 const vrstaLabels: Record<string, string> = {
@@ -76,6 +86,7 @@ export function LandlordForm({
   landlordId,
   onDirtyChange,
   onRequestExit,
+  skipInitialFocus,
 }: LandlordFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -132,6 +143,18 @@ export function LandlordForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDirty]);
 
+  const surnameRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (isEdit && !skipInitialFocus) {
+      // Edit mode: fokus na prvo input polje (Prezime / Naziv obrta / Naziv
+      // tvrtke) umjesto na radio buttone. Samo fokus — ne dira vrijednosti
+      // niti dirty-state forme. Preskočeno za create -> canonical edit
+      // prijelaz (skipInitialFocus) — vidi LandlordFormProps.
+      surnameRef.current?.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function onSubmit(data: LandlordFormValues) {
     startTransition(async () => {
       try {
@@ -146,8 +169,13 @@ export function LandlordForm({
 
         if (!isEdit && result.data?.id) {
           // Novi iznajmljivač je kreiran — prelazak na canonical edit URL
-          // (replace da /novi ne ostane u browser historyju).
-          router.replace(`/iznajmljivaci/${result.data.id}/uredi`);
+          // (replace da /novi ne ostane u browser historyju). justCreated
+          // signalizira edit stranici da preskoči initial-focus-na-Prezime
+          // (ovo nije "korisnik je kliknuo Promijeni", nego post-save
+          // prijelaz) — čita se u UrediIznajmljivacClient i odmah čisti.
+          router.replace(
+            `/iznajmljivaci/${result.data.id}/uredi?justCreated=1`,
+          );
         } else {
           // Uređivanje postojećeg — Spremi ne zatvara radni kontekst,
           // samo vraća formu u "clean" (nedirty) stanje.
@@ -160,6 +188,7 @@ export function LandlordForm({
   }
 
   const handleFormKeyDown = useFormKeyboardNav();
+  const datumRodjenjaNormalize = useDateFieldNormalize(form, "datumRodjenja");
 
   return (
     <Form {...form}>
@@ -235,6 +264,10 @@ export function LandlordForm({
                         className="bg-muted/40"
                         autoComplete="new-password"
                         {...field}
+                        ref={(el) => {
+                          field.ref(el);
+                          surnameRef.current = el;
+                        }}
                         onChange={(e) =>
                           field.onChange(
                             vrsta === "tvrtka"
@@ -315,6 +348,11 @@ export function LandlordForm({
                               if (digits.length === 8) v += ".";
                             }
                             field.onChange(v);
+                          }}
+                          onKeyDown={datumRodjenjaNormalize.onKeyDown}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            datumRodjenjaNormalize.onBlur(e);
                           }}
                         />
                       </FormControl>
@@ -545,16 +583,12 @@ export function LandlordForm({
                     </FormLabel>
                     <div className="flex items-center gap-2">
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                        <DecimalInput
+                          decimals={2}
                           disabled={tipProvizije === "I"}
                           className="bg-muted/40 w-28"
-                          value={field.value ?? 0}
-                          onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value) || 0)
-                          }
+                          value={field.value}
+                          onChange={(v) => field.onChange(v ?? 0)}
                           onFocus={(e) => e.target.select()}
                         />
                       </FormControl>

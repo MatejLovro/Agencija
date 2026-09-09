@@ -16,6 +16,7 @@ import type { LandlordRow } from "@/lib/db/queries/landlords";
 import type { AccommodationRow } from "@/lib/db/queries/accommodations";
 import type { PricelistRow } from "@/lib/db/queries/pricelist";
 import { fetchAccommodations, fetchPricelist } from "./actions";
+import { formatHrDecimal } from "@/lib/utils/decimal";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // ---------------------------------------------------------------------------
@@ -386,7 +387,7 @@ export function IznajmljivaciClient({
                     <TableCell>{formatDate(entry.dateFrom)}</TableCell>
                     <TableCell>{formatDate(entry.dateTo)}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {parseFloat(entry.pricePerNight).toFixed(2)}
+                      {formatHrDecimal(parseFloat(entry.pricePerNight), 2)}
                     </TableCell>
                   </TableRow>
                 ))}

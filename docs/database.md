@@ -310,6 +310,24 @@ koji se koristi kod pojedinih quick-create workflowa.
 
 Ne tretirati ga kao generičko poslovno pravilo za sve forme.
 
+### Jedinstvenost naziva
+
+Naziv grada (`cities.name`) mora biti jedinstven **case-insensitive**, uz zanemarivanje vodećih/završnih razmaka.
+
+Ovo je implementirano kao Postgres unique index preko izraza:
+
+```sql
+CREATE UNIQUE INDEX cities_name_lower_unique ON cities USING btree (lower(trim(name)));
+```
+
+(zamijenio je raniji jednostavan `UNIQUE(name)` constraint, koji je bio case-sensitive).
+
+Aplikacijska (server action) provjera prije INSERT-a postoji radi boljeg UX-a (jasna poruka uz polje umjesto generičke DB greške), ali **konačna zaštita od race conditiona je DB unique index** — dva istovremena zahtjeva s istim nazivom (case-insensitive) uvijek rezultiraju točno jednim uspješnim insertom; drugi dobiva Postgres `23505` grešku koju server action hvata i pretvara u istu korisničku poruku.
+
+Prikazani naziv grada ostaje onakav kakav je korisnik unio (uz standardnu capitalize-first normalizaciju na klijentu) — case-insensitive usporedba vrijedi samo za provjeru duplikata, ne mijenja spremljenu vrijednost.
+
+Nije uvedena dodatna normalizacija (npr. `unaccent`, locale-specifična pravila) — samo `lower(trim(...))`.
+
 
 # Iznajmljivači
 

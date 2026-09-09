@@ -48,12 +48,29 @@ export function CityCombobox({
   );
 
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+
+  function openAddCityDialog() {
+    setOpen(false);
+    setDialogOpen(true);
+  }
+
+  // CityCombobox ostaje vlasnik trigger refa i odlučuje da fokus treba
+  // vratiti na sebe kad se AddCityDialog zatvori (Escape, Odustani, ili
+  // uspješno Spremi) — AddCityDialog samo prosljeđuje Radixov
+  // onCloseAutoFocus hook prema van, bez vezivanja uz konkretan
+  // combobox koji ga je otvorio.
+  function handleDialogCloseAutoFocus(event: Event) {
+    event.preventDefault();
+    triggerRef.current?.focus();
+  }
 
   return (
     <div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            ref={triggerRef}
             variant="outline"
             role="combobox"
             aria-expanded={open}
@@ -83,7 +100,19 @@ export function CityCombobox({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
-          <Command>
+          <Command
+            onKeyDown={(e) => {
+              // Insert je lokalni shortcut samo za ovaj combobox — otvara
+              // istu "Dodaj novi grad" akciju kao klik, bez upisivanja
+              // znaka i bez utjecaja na Arrow/Enter/Escape/Tab navigaciju
+              // ili globalnu Enter navigaciju forme (koja ionako ignorira
+              // sadržaj unutar cmdk-root-a).
+              if (e.key === "Insert") {
+                e.preventDefault();
+                openAddCityDialog();
+              }
+            }}
+          >
             <CommandInput
               ref={searchInputRef}
               placeholder="Pretraži grad..."
@@ -129,12 +158,11 @@ export function CityCombobox({
                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-primary hover:bg-accent cursor-pointer"
                 onMouseDown={(e) => {
                   e.preventDefault(); // spriječi blur na input
-                  setOpen(false);
-                  setDialogOpen(true);
+                  openAddCityDialog();
                 }}
               >
                 <Plus className="h-4 w-4" />
-                Dodaj novi grad...
+                Dodaj novi grad (Ins)...
               </button>
             </div>
           </Command>
@@ -151,6 +179,7 @@ export function CityCombobox({
           onChange(city.id);
         }}
         initialName={search}
+        onCloseAutoFocus={handleDialogCloseAutoFocus}
       />
     </div>
   );

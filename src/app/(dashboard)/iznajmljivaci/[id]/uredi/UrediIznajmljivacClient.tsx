@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LandlordForm } from "@/components/iznajmljivaci/LandlordForm";
@@ -19,6 +19,7 @@ import {
   actionGetAccommodationById,
 } from "@/lib/actions/landlords";
 import { isoToHrDate } from "@/lib/utils/dates";
+import { formatHrDecimal } from "@/lib/utils/decimal";
 import {
   selectableTableHeaderClass,
   selectableTableRowClass,
@@ -60,7 +61,28 @@ export function UrediIznajmljivacClient({
   initialAccommodations,
 }: UrediIznajmljivacClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isDirty, setIsDirty] = useState(false);
+
+  // Pročitano sinkrono pri prvom renderu (ne u useEffect-u) da
+  // LandlordForm-ov mount-time autofocus efekt odmah dobije ispravnu
+  // vrijednost. justCreated znači da smo upravo stigli s create ->
+  // canonical edit prijelaza (LandlordForm.onSubmit), ne da je korisnik
+  // stvarno kliknuo "Promijeni" — u tom slučaju edit-mode autofocus na
+  // Prezime se preskače.
+  const [skipInitialFocus] = useState(
+    () => searchParams.get("justCreated") === "1",
+  );
+  const cleanedUrlRef = useRef(false);
+
+  useEffect(() => {
+    if (cleanedUrlRef.current) return;
+    cleanedUrlRef.current = true;
+    if (searchParams.get("justCreated") === "1") {
+      router.replace(`/iznajmljivaci/${landlordId}/uredi`, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const goToList = useCallback(() => {
     router.push(`/iznajmljivaci?selected=${landlordId}`);
@@ -211,6 +233,7 @@ export function UrediIznajmljivacClient({
         landlordId={landlordId}
         onDirtyChange={setIsDirty}
         onRequestExit={requestExit}
+        skipInitialFocus={skipInitialFocus}
       />
 
       <p className="text-sm text-muted-foreground mt-2">
@@ -410,11 +433,11 @@ export function UrediIznajmljivacClient({
                       </td>
                       <td className="px-3 py-2">{isoToHrDate(entry.dateTo)}</td>
                       <td className="px-3 py-2 text-right font-medium">
-                        {parseFloat(entry.pricePerNight).toFixed(2)} €
+                        {formatHrDecimal(parseFloat(entry.pricePerNight), 2)} €
                       </td>
                       <td className="px-3 py-2 text-right text-muted-foreground">
                         {entry.landlordPrice
-                          ? `${parseFloat(entry.landlordPrice).toFixed(2)} €`
+                          ? `${formatHrDecimal(parseFloat(entry.landlordPrice), 2)} €`
                           : "—"}
                       </td>
                     </tr>

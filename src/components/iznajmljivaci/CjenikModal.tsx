@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -268,15 +269,11 @@ export function CjenikModal({
                     </FormLabel>
                     <div className="flex items-center gap-2">
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                        <DecimalInput
+                          decimals={2}
                           className="bg-muted/40"
-                          value={field.value ?? ""}
-                          onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value) || 0)
-                          }
+                          value={field.value}
+                          onChange={(v) => field.onChange(v ?? 0)}
                           onFocus={(e) => e.target.select()}
                           ref={(el) => {
                             field.ref(el);
@@ -308,20 +305,12 @@ export function CjenikModal({
                     </FormLabel>
                     <div className="flex items-center gap-2">
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                        <DecimalInput
+                          decimals={2}
                           disabled={tipProvizije !== "I"}
                           className="bg-muted/40"
-                          value={field.value ?? ""}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === ""
-                                ? undefined
-                                : parseFloat(e.target.value),
-                            )
-                          }
+                          value={field.value ?? null}
+                          onChange={(v) => field.onChange(v ?? undefined)}
                           onFocus={(e) => e.target.select()}
                         />
                       </FormControl>
