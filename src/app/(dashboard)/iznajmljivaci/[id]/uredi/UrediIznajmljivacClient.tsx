@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LandlordForm } from "@/components/iznajmljivaci/LandlordForm";
 import { UnsavedChangesDialog } from "@/components/iznajmljivaci/UnsavedChangesDialog";
+import { CopyPricelistDialog } from "@/components/iznajmljivaci/CopyPricelistDialog";
 import {
   ApartmanModal,
   type AccommodationRow,
@@ -23,6 +24,8 @@ import {
 import {
   actionGetPricelistByAccommodation,
   actionGetAccommodationById,
+  actionGetAccommodationsByLandlord,
+  actionCopyPricelistToEmpty,
 } from "@/lib/actions/landlords";
 import { isoToHrDate } from "@/lib/utils/dates";
 import { formatHrDecimal } from "@/lib/utils/decimal";
@@ -120,6 +123,13 @@ export function UrediIznajmljivacClient({
   const [editingPricelistEntry, setEditingPricelistEntry] =
     useState<PricelistRow | null>(null);
   const [isPendingPricelist, startPricelistTransition] = useTransition();
+
+  const [copyPricelistDialogOpen, setCopyPricelistDialogOpen] =
+    useState(false);
+  const [isCopyingPricelist, startCopyPricelistTransition] = useTransition();
+  const [copyPricelistMessage, setCopyPricelistMessage] = useState<
+    string | null
+  >(null);
 
   const currentPricelist = selectedAccommodationId
     ? (pricelist[selectedAccommodationId] ?? [])
@@ -238,9 +248,40 @@ export function UrediIznajmljivacClient({
   }
 
   function handleCopyPricelistToEmpty() {
-    // Placeholder za 3. korak: confirmation dijalog + server action koji
-    // kopira redove cjenika iz označene jedinice u sve jedinice istog
-    // iznajmljivača koje trenutno nemaju nijedan redak cjenika.
+    setCopyPricelistMessage(null);
+    setCopyPricelistDialogOpen(true);
+  }
+
+  function handleConfirmCopyPricelist() {
+    if (!selectedAccommodationId) return;
+    startCopyPricelistTransition(async () => {
+      const result = await actionCopyPricelistToEmpty(selectedAccommodationId);
+      setCopyPricelistDialogOpen(false);
+
+      if (!result.success) {
+        setCopyPricelistMessage(
+          result.reason === "NO_EMPTY_TARGETS"
+            ? "Nema slobodnih smještajnih jedinica bez cjenika za kopiranje."
+            : "Označena jedinica nema cjenik za kopiranje.",
+        );
+        return;
+      }
+
+      const freshAccommodations =
+        await actionGetAccommodationsByLandlord(landlordId);
+      setAccommodations(freshAccommodations);
+      // Ciljne jedinice su upravo dobile nove retke cjenika — očisti cijeli
+      // lokalni cache tako da sljedeći klik na bilo koju jedinicu ponovno
+      // dohvati svježe podatke (jednostavno i sigurno, budući da je fetch
+      // po jedinici i onako lazy/on-demand).
+      setPricelist({});
+
+      setCopyPricelistMessage(
+        result.copiedToCount === 1
+          ? "Cjenik je kopiran na 1 smještajnu jedinicu."
+          : `Cjenik je kopiran na ${result.copiedToCount} smještajnih jedinica.`,
+      );
+    });
   }
 
   return (
@@ -323,6 +364,12 @@ export function UrediIznajmljivacClient({
               </Button>
             </div>
           </div>
+
+          {copyPricelistMessage && (
+            <p className="text-sm text-muted-foreground mb-3">
+              {copyPricelistMessage}
+            </p>
+          )}
 
           <div className="border border-border rounded-md overflow-hidden">
             <table className="w-full text-sm">
@@ -566,6 +613,13 @@ export function UrediIznajmljivacClient({
         open={dialogOpen}
         onCancel={cancelExit}
         onConfirm={confirmExit}
+      />
+
+      <CopyPricelistDialog
+        open={copyPricelistDialogOpen}
+        isPending={isCopyingPricelist}
+        onCancel={() => setCopyPricelistDialogOpen(false)}
+        onConfirm={handleConfirmCopyPricelist}
       />
     </div>
   );

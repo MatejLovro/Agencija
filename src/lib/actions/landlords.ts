@@ -6,11 +6,13 @@ import {
   createAccommodation,
   updateAccommodation,
   deleteAccommodation,
+  getAccommodationsByLandlord,
 } from "@/lib/db/queries/accommodations";
 import {
   createPricelistEntry,
   updatePricelistEntry,
   deletePricelistEntry,
+  copyPricelistToEmptyAccommodations,
 } from "@/lib/db/queries/pricelist";
 import { getLandlordByOib } from "@/lib/db/queries/landlords";
 import { hrDateToIso } from "../utils/dates";
@@ -217,6 +219,10 @@ export async function actionGetAccommodationById(id: string) {
   return await getAccommodationById(id);
 }
 
+export async function actionGetAccommodationsByLandlord(landlordId: string) {
+  return await getAccommodationsByLandlord(landlordId);
+}
+
 // --- Pricelist actions ---
 
 export async function actionCreatePricelistEntry(
@@ -260,4 +266,16 @@ export async function actionGetPricelistByAccommodation(
 ) {
   const entries = await getPricelistByAccommodation(accommodationId);
   return entries;
+}
+
+export async function actionCopyPricelistToEmpty(
+  sourceAccommodationId: string,
+) {
+  const result = await copyPricelistToEmptyAccommodations(
+    sourceAccommodationId,
+  );
+  if (result.success) {
+    revalidatePath("/iznajmljivaci");
+  }
+  return result;
 }
