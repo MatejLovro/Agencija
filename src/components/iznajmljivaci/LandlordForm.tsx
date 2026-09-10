@@ -501,6 +501,7 @@ export function LandlordForm({
                     <FormControl>
                       <Input
                         className="bg-muted/40"
+                        autoComplete="new-password"
                         {...field}
                         value={field.value ?? ""}
                       />
@@ -519,6 +520,7 @@ export function LandlordForm({
                     <FormControl>
                       <Input
                         className="bg-muted/40"
+                        autoComplete="new-password"
                         {...field}
                         value={field.value ?? ""}
                       />
