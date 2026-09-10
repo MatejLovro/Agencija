@@ -34,11 +34,16 @@ import {
 import {
   actionCreateAccommodation,
   actionUpdateAccommodation,
+  actionGetAccommodationById,
 } from "@/lib/actions/landlords";
 import { useFormKeyboardNav } from "@/hooks/use-form-keyboard-nav";
 import { useIntegerFieldNormalize } from "@/hooks/use-integer-field-normalize";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { DiscardAccommodationChangesDialog } from "@/components/iznajmljivaci/DiscardAccommodationChangesDialog";
+import {
+  buildAccommodationCopy,
+  mapAccommodationToFormValues,
+} from "@/lib/accommodation-copy";
 
 // Tip za red u tablici apartmana — vraćamo gore nakon spremi
 export interface AccommodationRow {
@@ -69,6 +74,10 @@ interface ApartmanModalProps {
   accommodationId?: string;
   landlordCityId?: number;
   landlordAddress?: string;
+  // Za "Kopiraj podatke od ..." u CREATE modu — id i naziv smještajne
+  // jedinice čiji se allow-list podaci mogu preuzeti u novu formu.
+  copySourceId?: string | null;
+  copySourceName?: string;
 }
 
 const TABS = [
@@ -226,8 +235,11 @@ export function ApartmanModal({
   accommodationId,
   landlordCityId,
   landlordAddress,
+  copySourceId,
+  copySourceName,
 }: ApartmanModalProps) {
   const isEdit = !!accommodationId;
+  const [isCopying, setIsCopying] = useState(false);
 
   const [activeTab, setActiveTab] = useState<1 | 2 | 3 | 4>(1);
   // Najviša kartica koju korisnik smije otvoriti klikom na naslov kartice —
@@ -368,6 +380,39 @@ export function ApartmanModal({
     // Naprijed samo do najviše dosegnute (validirane) kartice; natrag
     // uvijek dopušteno — klik na naslov kartice ne smije zaobići "Dalje".
     if (tab <= maxUnlockedTab) setActiveTab(tab);
+  }
+
+  // "Kopiraj podatke od ..." — CREATE mod, samo kartica 1. Popunjava SAMO
+  // allow-list polja (buildAccommodationCopy) preko form.setValue() po
+  // polju — ne form.reset(), da ne dirne polja izvan allow-liste (npr.
+  // name) niti RHF-ov pojam "default values". shouldDirty: true je
+  // standardni RHF mehanizam: dirty postaje true samo za polja čija se
+  // kopirana vrijednost stvarno razlikuje od CREATE default vrijednosti.
+  // Ne dira activeTab/maxUnlockedTab — wizard state ostaje netaknut.
+  async function handleCopyFromSource() {
+    if (!copySourceId || isCopying) return;
+    setIsCopying(true);
+    try {
+      const acc = await actionGetAccommodationById(copySourceId);
+      if (!acc) return;
+
+      const sourceValues = mapAccommodationToFormValues(acc);
+      const copiedFields = buildAccommodationCopy(sourceValues);
+
+      (
+        Object.entries(copiedFields) as [
+          keyof AccommodationFormValues,
+          AccommodationFormValues[keyof AccommodationFormValues],
+        ][]
+      ).forEach(([field, value]) => {
+        form.setValue(field, value, {
+          shouldDirty: true,
+          shouldValidate: false,
+        });
+      });
+    } finally {
+      setIsCopying(false);
+    }
   }
 
   // Reset forme i tab kada se modal otvori/zatvori
@@ -1251,20 +1296,50 @@ export function ApartmanModal({
             </div>
 
             {/* ── Footer ──────────────────────────────────────── */}
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              {activeTab > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleBack}
-                  disabled={isPending}
-                >
-                  Natrag
-                </Button>
-              )}
-              {activeTab < 4 ? (
-                <>
-                  {activeTab === 1 && (
+            <div className="flex justify-between items-center gap-3 pt-4 border-t">
+              <div>
+                {!isEdit && activeTab === 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleCopyFromSource}
+                    disabled={!copySourceId || isPending || isCopying}
+                  >
+                    {isCopying
+                      ? "Kopiranje..."
+                      : `Kopiraj podatke od ${copySourceName ?? "..."}`}
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                {activeTab > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
+                    disabled={isPending}
+                  >
+                    Natrag
+                  </Button>
+                )}
+                {activeTab < 4 ? (
+                  <>
+                    {activeTab === 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={requestExit}
+                        disabled={isPending}
+                      >
+                        Odustani
+                      </Button>
+                    )}
+                    <Button key="next" type="button" onClick={handleNext}>
+                      Dalje
+                    </Button>
+                  </>
+                ) : (
+                  <>
                     <Button
                       type="button"
                       variant="outline"
@@ -1273,26 +1348,12 @@ export function ApartmanModal({
                     >
                       Odustani
                     </Button>
-                  )}
-                  <Button key="next" type="button" onClick={handleNext}>
-                    Dalje
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={requestExit}
-                    disabled={isPending}
-                  >
-                    Odustani
-                  </Button>
-                  <Button key="submit" type="submit" disabled={isPending}>
-                    {isPending ? "Spremanje..." : "Spremi"}
-                  </Button>
-                </>
-              )}
+                    <Button key="submit" type="submit" disabled={isPending}>
+                      {isPending ? "Spremanje..." : "Spremi"}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </form>
         </Form>

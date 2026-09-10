@@ -34,6 +34,7 @@ import {
   selectableTableRowClass,
 } from "@/lib/utils";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
+import { mapAccommodationToFormValues } from "@/lib/accommodation-copy";
 import type { AccommodationFormValues } from "@/lib/validations/accomodation";
 import type { LandlordFormValues } from "@/lib/validations/landlord";
 
@@ -111,6 +112,10 @@ export function UrediIznajmljivacClient({
     id: string;
     values: AccommodationFormValues;
   } | null>(null);
+  // Zamrznut u trenutku klika na "Dodaj" — koji je source za "Kopiraj
+  // podatke od ..." u CREATE modu ApartmanModala. Ne mijenja se dok je
+  // modal otvoren, čak i da se selekcija u tablici iza njega promijeni.
+  const [copySourceId, setCopySourceId] = useState<string | null>(null);
 
   const [cjenikModalOpen, setCjenikModalOpen] = useState(false);
   const [pricelist, setPricelist] = useState<Record<string, PricelistRow[]>>(
@@ -197,54 +202,17 @@ export function UrediIznajmljivacClient({
 
     setEditingAccommodation({
       id: acc.id,
-      values: {
-        name: acc.name,
-        fullName: acc.fullName ?? "",
-        vrstaApartmana: acc.vrstaApartmana,
-        cityId: acc.cityId,
-        address: acc.address,
-        webUrl: acc.webUrl ?? "",
-        brojZvjezdica: acc.brojZvjezdica,
-        kategorizacijskiBroj: acc.kategorizacijskiBroj ?? "",
-        brojSoba: acc.brojSoba,
-        brojKreveta: acc.brojKreveta,
-        brojPomocnihLezajeva: acc.brojPomocnihLezajeva ?? undefined,
-        maxOsoba: acc.maxOsoba ?? undefined,
-        aktivan: acc.aktivan,
-        prioritetan: acc.prioritetan,
-        cistiAgencija: acc.cistiAgencija,
-        opis: acc.opis ?? "",
-        imaKlima: acc.imaKlima,
-        imaParking: acc.imaParking,
-        imaWifi: acc.imaWifi,
-        imaRostilj: acc.imaRostilj,
-        imaTerasu: acc.imaTerasu,
-        pogledNaMore: acc.pogledNaMore,
-        kucniLjubimac: acc.kucniLjubimac,
-        nepusaci: acc.nepusaci,
-        pristupacnoInvalidima: acc.pristupacnoInvalidima,
-        imaKuhinju: acc.imaKuhinju,
-        imaCajnuKuhinju: acc.imaCajnuKuhinju,
-        brojKupaonica: acc.brojKupaonica ?? undefined,
-        kupаonaTus: acc.kupаonaTus,
-        imaJacuzzi: acc.imaJacuzzi,
-        kat: acc.kat ?? undefined,
-        imaBasen: acc.imaBasen,
-        imaSpa: acc.imaSpa,
-        imaFitness: acc.imaFitness,
-        imaRestoran: acc.imaRestoran,
-        imaPunjacAuta: acc.imaPunjacAuta,
-        udaljenostMore: acc.udaljenostMore ?? undefined,
-        udaljenostCentar: acc.udaljenostCentar ?? undefined,
-        udaljenostTrgovina: acc.udaljenostTrgovina ?? undefined,
-        aktivnostBicikliranje: acc.aktivnostBicikliranje,
-        aktivnostRonjenje: acc.aktivnostRonjenje,
-        aktivnostPlaninarenje: acc.aktivnostPlaninarenje,
-        katastarskaOpcina: acc.katastarskaOpcina ?? "",
-        katastarskaCestica: acc.katastarskaCestica ?? "",
-      },
+      values: mapAccommodationToFormValues(acc),
     });
     setModalOpen(true);
+  }
+
+  function getCopySourceId(): string | null {
+    if (selectedAccommodationId) return selectedAccommodationId;
+    if (accommodations.length === 0) return null;
+    // accommodations je sortiran createdAt ASC (getAccommodationsByLandlord)
+    // — zadnji element je zadnja upisana smještajna jedinica.
+    return accommodations[accommodations.length - 1].id;
   }
 
   function handleCopyPricelistToEmpty() {
@@ -356,6 +324,7 @@ export function UrediIznajmljivacClient({
                 size="sm"
                 onClick={() => {
                   setEditingAccommodation(null);
+                  setCopySourceId(getCopySourceId());
                   setModalOpen(true);
                 }}
               >
@@ -572,6 +541,10 @@ export function UrediIznajmljivacClient({
         cities={cities}
         defaultValues={editingAccommodation?.values}
         accommodationId={editingAccommodation?.id}
+        copySourceId={copySourceId}
+        copySourceName={
+          accommodations.find((a) => a.id === copySourceId)?.name
+        }
       />
 
       {selectedAccommodationId && (

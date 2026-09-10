@@ -96,6 +96,7 @@ src/lib/db/schema/accommodations.ts
 src/lib/db/queries/accommodations.ts
 src/lib/validations/accomodation.ts
 src/lib/actions/landlords.ts
+src/lib/accommodation-copy.ts
 src/components/iznajmljivaci/ApartmanModal.tsx
 ```
 
@@ -1039,6 +1040,120 @@ Za UI dohvat postoji i:
 ```text
 actionGetAccommodationById(id)
 ```
+
+
+# Kopiranje podataka između smještajnih jedinica
+
+## 52a. Svrha
+
+U CREATE modu (`ApartmanModal`, nova smještajna jedinica) korisnik može preuzeti dio podataka iz postojeće jedinice istog iznajmljivača — privatni iznajmljivači često imaju više sličnih apartmana u istoj kući.
+
+Kopiranje je **isključivo client-side popunjavanje forme**, ne DB operacija:
+
+```text
+klik "Kopiraj podatke od ..."
+→ dohvat izvorne jedinice (actionGetAccommodationById)
+→ popunjavanje SAMO allow-list polja u RHF formi
+→ korisnik nastavlja normalno kroz formu i sam sprema klikom na "Spremi"
+```
+
+Dostupno samo na kartici "1. Osnovni podaci", samo u CREATE modu (ne u EDIT modu).
+
+
+## 52b. Centralni copy contract — explicit allow-list
+
+Pravilo se nalazi u:
+
+```text
+src/lib/accommodation-copy.ts
+```
+
+konkretno u konstanti:
+
+```text
+ACCOMMODATION_COPY_FIELDS
+```
+
+i funkciji:
+
+```text
+buildAccommodationCopy(source)
+```
+
+**Ovo je jedini izvor istine za to koja polja se kopiraju.** Implementacija namjerno NE koristi `{ ...source }` niti bilo koji drugi mehanizam koji bi automatski propagirao nova polja.
+
+
+## 52c. Pravilo za buduća polja
+
+**Kod dodavanja novog podatka smještajnoj jedinici (novi stupac u `accommodations`, novo polje u `accommodationSchema`) potrebno je eksplicitno odlučiti treba li to polje biti uključeno u copy contract.**
+
+Novo polje se NE smije automatski početi kopirati samo zato što je dodano u shemu. Odluku treba svjesno donijeti i, ako je pozitivna, dodati polje u `ACCOMMODATION_COPY_FIELDS` u `src/lib/accommodation-copy.ts`.
+
+
+## 52d. Trenutni copy contract (informativno)
+
+Trenutno se kopiraju (kartica → polja):
+
+```text
+Kartica 1: vrstaApartmana, cityId, address, brojZvjezdica, opis,
+           aktivan, prioritetan, cistiAgencija
+
+Kartica 2: imaKlima, imaParking, imaWifi, imaRostilj, imaTerasu,
+           pogledNaMore, kucniLjubimac, nepusaci, imaKuhinju,
+           imaCajnuKuhinju, kupаonaTus
+
+Kartica 3: sva polja kartice (imaBasen, imaSpa, imaFitness,
+           imaRestoran, imaPunjacAuta, udaljenostMore,
+           udaljenostCentar, udaljenostTrgovina,
+           aktivnostBicikliranje, aktivnostRonjenje,
+           aktivnostPlaninarenje)
+
+Kartica 4: katastarskaOpcina, katastarskaCestica
+```
+
+Namjerno se NE kopiraju: `name`, `fullName`, `webUrl`, `kategorizacijskiBroj`, `brojSoba`, `brojKreveta`, `brojPomocnihLezajeva`, `maxOsoba`, `pristupacnoInvalidima`, `imaJacuzzi`, `brojKupaonica`, `kat` — svaka je jedinica specifična po tim podacima čak i unutar iste kuće.
+
+Ovaj popis održavati sinkroniziranim sa stvarnim sadržajem `ACCOMMODATION_COPY_FIELDS` — ako dođe do razlike, source kod je mjerodavan.
+
+
+## 52e. Što se nikad ne kopira
+
+Neovisno o allow-listi, sljedeće se strukturno ne može kopirati kroz ovaj mehanizam jer nije dio `AccommodationFormValues`:
+
+```text
+id
+agencyId
+landlordId
+createdAt
+updatedAt
+hasPricelist (derived, ne DB stupac)
+cjenik (pricelist tabela)
+rezervacije
+boravci/prijave
+```
+
+Cjenik ima vlastitu, potpuno odvojenu funkcionalnost "Kopiraj cjenik na prazne" (`actionCopyPricelistToEmpty`) i ne dijeli kod ni UI s ovim mehanizmom.
+
+Buduće fotografije, dokumenti i druge relacije (kad budu implementirane) se ne uključuju automatski — vrijedi isto pravilo iz §52c.
+
+
+## 52f. Odabir source jedinice
+
+```text
+ako je jedinica označena u tablici prije klika na "Dodaj" → source je ta jedinica
+inače → source je zadnja upisana jedinica tog iznajmljivača (createdAt DESC)
+```
+
+Source ID se određuje u trenutku klika na "Dodaj" (`UrediIznajmljivacClient.getCopySourceId()`) i ostaje nepromijenjen dok je CREATE forma otvorena.
+
+
+## 52g. RHF mehanizam
+
+Kopiranje koristi `form.setValue(polje, vrijednost, { shouldDirty: true })` po svakom allow-list polju — ne `form.reset()`, jer `reset()` bi dirao i polja izvan allow-liste te mijenjao RHF-ov interni pojam "default values".
+
+`shouldDirty: true` je standardni RHF mehanizam: `formState.isDirty` postaje `true` samo za polja čija se kopirana vrijednost stvarno razlikuje od CREATE default vrijednosti — nema dodatnog, ručno upravljanog dirty state-a.
+
+Kopiranje ne dira wizard state (`activeTab`, `maxUnlockedTab`) — korisnik nastavlja kroz "Dalje" kao inače, kartice 2-4 ostaju zaključane do uspješne validacije svake prethodne.
 
 
 # Multi-tenant zaštita
