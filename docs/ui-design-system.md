@@ -750,6 +750,19 @@ Pravilo: reset aktivne kartice na prvu mora biti eksplicitan dio **svakog** puta
 
 Referentna implementacija: `ApartmanModal` (`activeTab` reset u `onSubmit` create grani, uz postojeći reset u `handleClose`).
 
+### Wizard navigacija kod multi-tab formi (Natrag / Dalje / Spremi)
+
+Kod multi-tab/wizard formi gdje kartice predstavljaju korake koji se logički nadovezuju (ne nezavisne cjeline koje se mogu popunjavati proizvoljnim redoslijedom), navigacija mora poštovati sljedeća pravila:
+
+- **Naprijed zahtijeva uspješnu validaciju trenutnog koraka.** Klik na "Dalje" validira SAMO polja koja pripadaju trenutnoj kartici (RHF `form.trigger(poljaTeKartice)`), ne cijelu formu. Ako validacija prođe, prelazi se na sljedeću karticu; ako ne, korisnik ostaje na trenutnoj kartici, postojeće validation poruke (`FormMessage`) se prikazuju kao inače, a fokus se postavlja na prvo neispravno polje (`form.setFocus(polje)`).
+- **Natrag je uvijek dopušten**, bez validacije — vraćanje na prethodni korak ne smije nikad biti blokirano.
+- **Nije dopušteno preskakanje nevalidiranih koraka.** Klik izravno na naslov kartice (ne kroz "Dalje") ne smije otvoriti korak dalje od najviše kartice koju je korisnik već uspješno validirao — inače korisnik zaobilazi validaciju cijelih koraka. Ne treba disabled izgled na naslovima kartica ako to narušava vizualni dojam taba — dovoljno je da klik na nedostupnu karticu jednostavno ne promijeni aktivnu karticu.
+- **Završni "Spremi" postoji samo na posljednjem koraku.** Ranije kartice imaju samo "Dalje" (plus "Natrag" osim na prvoj), zadnja kartica ima "Natrag" + "Odustani" + "Spremi". "Natrag"/"Dalje" moraju biti `type="button"` da ne triggeraju native submit — samo "Spremi" je `type="submit"` i koristi postojeći `form.handleSubmit(onSubmit)` flow.
+- **Dodatna zaštita na submitu**: `form.handleSubmit(onSubmit, onInvalid)` — RHF-ov drugi (invalid) callback, ne paralelna validacija — hvata slučaj kad bi Spremi ipak bio pozvan dok neka ranija kartica ima grešku (npr. edit mode gdje su kartice unaprijed otključane). `onInvalid` otvara prvu karticu koja sadrži grešku i fokusira prvo neispravno polje na njoj.
+- **Create vs. edit razlika u "koliko je unaprijed otključano"**: kod unosa NOVOG zapisa korisnik mora proći kroz "Dalje" redom (sve kartice osim prve kreću zaključane). Kod UREĐIVANJA postojećeg zapisa, budući da podaci već postoje i pretpostavljeno su prethodno validni, sve kartice mogu odmah biti otključane klikom na naslov — korisnik ne mora ponovno prolaziti kroz "Dalje" da bi došao do zadnje kartice. U oba slučaja validacija na "Dalje" i na "Spremi" ostaje aktivna.
+
+Referentna implementacija: `ApartmanModal` (`TAB_FIELDS` mapping polje→kartica, `handleNext`/`handleBack`/`handleTabClick`, `maxUnlockedTab` state, `onInvalid` handler).
+
 ### Focus return nakon zatvaranja modala otvorenog iz druge kontrole
 
 Kad se modal otvori iz kontrole koja sama nestaje/zatvara se u tom trenutku (npr. Popover/Combobox koji se zatvara prije nego se modal otvori), Radixov default `onCloseAutoFocus` ponašanje ("vrati fokus na element koji je bio fokusiran prije otvaranja") može biti nepouzdano jer ta referenca više ne postoji u DOM-u na isti način.

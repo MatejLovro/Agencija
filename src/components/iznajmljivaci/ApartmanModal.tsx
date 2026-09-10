@@ -37,6 +37,8 @@ import {
 } from "@/lib/actions/landlords";
 import { useFormKeyboardNav } from "@/hooks/use-form-keyboard-nav";
 import { useIntegerFieldNormalize } from "@/hooks/use-integer-field-normalize";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
+import { DiscardAccommodationChangesDialog } from "@/components/iznajmljivaci/DiscardAccommodationChangesDialog";
 
 // Tip za red u tablici apartmana — vraćamo gore nakon spremi
 export interface AccommodationRow {
@@ -75,6 +77,62 @@ const TABS = [
   { id: 3, label: "3. Lokacija i aktivnosti" },
   { id: 4, label: "4. Ostalo" },
 ] as const;
+
+// Polja po kartici — koristi se za validaciju "Dalje" (trigger() samo za
+// trenutnu karticu) i za pronalaženje prve kartice s greškom pri submitu.
+// Mora pokrivati SVA polja iz accommodationSchema, grupirana isto kao
+// komentari u schemi (kartica 1 = Basic info/Capacity/Status/Description).
+const TAB_FIELDS: Record<1 | 2 | 3 | 4, (keyof AccommodationFormValues)[]> = {
+  1: [
+    "name",
+    "fullName",
+    "vrstaApartmana",
+    "cityId",
+    "address",
+    "webUrl",
+    "brojZvjezdica",
+    "kategorizacijskiBroj",
+    "brojSoba",
+    "brojKreveta",
+    "brojPomocnihLezajeva",
+    "maxOsoba",
+    "aktivan",
+    "prioritetan",
+    "cistiAgencija",
+    "opis",
+  ],
+  2: [
+    "imaKlima",
+    "imaParking",
+    "imaWifi",
+    "imaRostilj",
+    "imaTerasu",
+    "pogledNaMore",
+    "kucniLjubimac",
+    "nepusaci",
+    "pristupacnoInvalidima",
+    "imaKuhinju",
+    "imaCajnuKuhinju",
+    "brojKupaonica",
+    "kupаonaTus",
+    "imaJacuzzi",
+    "kat",
+  ],
+  3: [
+    "imaBasen",
+    "imaSpa",
+    "imaFitness",
+    "imaRestoran",
+    "imaPunjacAuta",
+    "udaljenostMore",
+    "udaljenostCentar",
+    "udaljenostTrgovina",
+    "aktivnostBicikliranje",
+    "aktivnostRonjenje",
+    "aktivnostPlaninarenje",
+  ],
+  4: ["katastarskaOpcina", "katastarskaCestica"],
+};
 
 const DEFAULT_VALUES: AccommodationFormValues = {
   name: "",
@@ -169,11 +227,18 @@ export function ApartmanModal({
   landlordCityId,
   landlordAddress,
 }: ApartmanModalProps) {
+  const isEdit = !!accommodationId;
+
   const [activeTab, setActiveTab] = useState<1 | 2 | 3 | 4>(1);
+  // Najviša kartica koju korisnik smije otvoriti klikom na naslov kartice —
+  // sprječava preskakanje nevalidiranih koraka. "Dalje" je podiže nakon
+  // uspješne validacije trenutne kartice; "Natrag" je ne mijenja. Postavlja
+  // se na 1 (create) ili 4 (edit) u useEffect-ovima koji reagiraju na
+  // otvaranje modala — modal ostaje mountiran između otvaranja pa se
+  // useState initial vrijednost ne bi ponovno evaluirala.
+  const [maxUnlockedTab, setMaxUnlockedTab] = useState<1 | 2 | 3 | 4>(1);
   const [isPending, setIsPending] = useState(false);
   const handleFormKeyDown = useFormKeyboardNav();
-
-  const isEdit = !!accommodationId;
 
   function getDefaultValues(
     landlordCityId?: number,
@@ -193,6 +258,8 @@ export function ApartmanModal({
     defaultValues:
       defaultValues ?? getDefaultValues(landlordCityId, landlordAddress),
   });
+
+  const { isDirty } = form.formState;
 
   const brojSobaNormalize = useIntegerFieldNormalize(form, "brojSoba");
   const brojKrevetaNormalize = useIntegerFieldNormalize(form, "brojKreveta");
@@ -240,6 +307,7 @@ export function ApartmanModal({
       // mountiran između otvaranja, pa activeTab ne bi inače resetirao
       // sam od sebe.
       setActiveTab(1);
+      setMaxUnlockedTab(1);
 
       onClose();
     } catch (error) {
@@ -247,6 +315,59 @@ export function ApartmanModal({
     } finally {
       setIsPending(false);
     }
+  }
+
+  // Dodatna zaštita pri submitu (npr. Spremi na kartici 4 dok kartica 1
+  // ima grešku koja iz nekog razloga nije uhvaćena kroz "Dalje" — npr.
+  // server-side edit defaultValues koji krše schemu). RHF handleSubmit
+  // poziva ovaj handler umjesto onSubmit kad postoje validation errors;
+  // ne duplicira validaciju, samo reagira na već postojeći errors objekt.
+  function onInvalid(errors: typeof form.formState.errors) {
+    const invalidFieldNames = Object.keys(errors) as Array<
+      keyof AccommodationFormValues
+    >;
+    if (invalidFieldNames.length === 0) return;
+
+    const firstErrorTab = ([1, 2, 3, 4] as const).find((tab) =>
+      TAB_FIELDS[tab].some((field) => invalidFieldNames.includes(field)),
+    );
+    if (!firstErrorTab) return;
+
+    setActiveTab(firstErrorTab);
+    setMaxUnlockedTab((prev) => (prev < firstErrorTab ? firstErrorTab : prev));
+
+    const firstErrorField = TAB_FIELDS[firstErrorTab].find((field) =>
+      invalidFieldNames.includes(field),
+    );
+    if (firstErrorField) {
+      // setFocus mora pričekati da se tab-content za firstErrorTab
+      // mounta (kartice se renderiraju uvjetno, {activeTab === N && ...}).
+      setTimeout(() => form.setFocus(firstErrorField), 0);
+    }
+  }
+
+  async function handleNext() {
+    const isValid = await form.trigger(TAB_FIELDS[activeTab]);
+    if (!isValid) {
+      const firstErrorField = TAB_FIELDS[activeTab].find(
+        (field) => form.formState.errors[field],
+      );
+      if (firstErrorField) form.setFocus(firstErrorField);
+      return;
+    }
+    const next = (activeTab + 1) as 1 | 2 | 3 | 4;
+    setActiveTab(next);
+    setMaxUnlockedTab((prev) => (prev < next ? next : prev));
+  }
+
+  function handleBack() {
+    setActiveTab((prev) => (prev - 1) as 1 | 2 | 3 | 4);
+  }
+
+  function handleTabClick(tab: 1 | 2 | 3 | 4) {
+    // Naprijed samo do najviše dosegnute (validirane) kartice; natrag
+    // uvijek dopušteno — klik na naslov kartice ne smije zaobići "Dalje".
+    if (tab <= maxUnlockedTab) setActiveTab(tab);
   }
 
   // Reset forme i tab kada se modal otvori/zatvori
@@ -265,28 +386,46 @@ export function ApartmanModal({
     });
 
     setActiveTab(1);
+    setMaxUnlockedTab(1);
     onClose();
   }
+
+  // Odustani/X/Escape/klik izvan: ako forma nije dirty, zatvori odmah
+  // (handleClose). Ako je dirty, prvo pitaj potvrdu preko AlertDialoga —
+  // isti reusable obrazac kao useUnsavedChangesGuard za iznajmljivača.
+  const {
+    dialogOpen: discardDialogOpen,
+    requestExit,
+    cancelExit,
+    confirmExit,
+  } = useUnsavedChangesGuard(isDirty, handleClose);
 
   useEffect(() => {
     if (open && !defaultValues) {
       form.reset(getDefaultValues(landlordCityId, landlordAddress));
+      setActiveTab(1);
+      setMaxUnlockedTab(1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
     if (open && defaultValues) {
       form.reset(defaultValues);
+      setActiveTab(1);
+      setMaxUnlockedTab(4);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultValues]);
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) handleClose();
-      }}
-    >
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          if (!o) requestExit();
+        }}
+      >
       <DialogContent
         className="max-w-[900px] w-full sm:max-w-[900px] max-h-[90vh] overflow-y-auto"
         // Sakrivamo defaultni X gumb jer imamo vlastiti
@@ -300,7 +439,7 @@ export function ApartmanModal({
             </DialogTitle>
             <button
               type="button"
-              onClick={handleClose}
+              onClick={requestExit}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="h-5 w-5" />
@@ -314,7 +453,7 @@ export function ApartmanModal({
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
@@ -329,7 +468,7 @@ export function ApartmanModal({
         {/* ── Sadržaj kartice ─────────────────────────────────── */}
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={form.handleSubmit(onSubmit, onInvalid)}
             onKeyDown={handleFormKeyDown}
             noValidate
             autoComplete="off"
@@ -1113,21 +1252,58 @@ export function ApartmanModal({
 
             {/* ── Footer ──────────────────────────────────────── */}
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                disabled={isPending}
-              >
-                Odustani
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "Spremanje..." : "Spremi"}
-              </Button>
+              {activeTab > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={isPending}
+                >
+                  Natrag
+                </Button>
+              )}
+              {activeTab < 4 ? (
+                <>
+                  {activeTab === 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={requestExit}
+                      disabled={isPending}
+                    >
+                      Odustani
+                    </Button>
+                  )}
+                  <Button key="next" type="button" onClick={handleNext}>
+                    Dalje
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={requestExit}
+                    disabled={isPending}
+                  >
+                    Odustani
+                  </Button>
+                  <Button key="submit" type="submit" disabled={isPending}>
+                    {isPending ? "Spremanje..." : "Spremi"}
+                  </Button>
+                </>
+              )}
             </div>
           </form>
         </Form>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+
+      <DiscardAccommodationChangesDialog
+        open={discardDialogOpen}
+        onCancel={cancelExit}
+        onConfirm={confirmExit}
+      />
+    </>
   );
 }
