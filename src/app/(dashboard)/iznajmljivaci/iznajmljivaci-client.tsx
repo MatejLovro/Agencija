@@ -17,6 +17,11 @@ import type { AccommodationRow } from "@/lib/db/queries/accommodations";
 import type { PricelistRow } from "@/lib/db/queries/pricelist";
 import { fetchAccommodations, fetchPricelist } from "./actions";
 import { formatHrDecimal } from "@/lib/utils/decimal";
+import {
+  cn,
+  selectableTableHeaderClass,
+  selectableTableRowClass,
+} from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // ---------------------------------------------------------------------------
@@ -35,6 +40,15 @@ interface Props {
 
 type SortField = "surname" | "name" | "oib" | "city";
 type SortDir = "asc" | "desc";
+
+const vrstaApartmanaLabels: Record<string, string> = {
+  apartman: "Apartman",
+  soba: "Soba",
+  studio: "Studio",
+  vila: "Vila",
+  kuca: "Kuća",
+  mobilna_kucica: "Mobilna kućica",
+};
 
 function vrstaLabel(vrsta: string) {
   const map: Record<string, string> = {
@@ -176,13 +190,13 @@ export function IznajmljivaciClient({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex h-full max-w-[1200px] w-full mx-auto flex-col">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <div className="relative w-64">
+      <div className="flex items-center justify-between gap-2">
+        <div className="relative w-[300px]">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Pretraži po prezimenu ili imenu..."
+            placeholder="Pretraži po imenu, prezimenu ili OIB-u..."
             className="pl-8"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -212,38 +226,38 @@ export function IznajmljivaciClient({
       </div>
 
       {/* Tablica iznajmljivača */}
-      <div className="rounded-md border">
+      <div className="mt-3 flex-1 min-h-0 overflow-y-auto rounded-md border bg-card">
         <Table>
-          <TableHeader>
-            <TableRow>
+          <TableHeader className="sticky top-0 z-10 bg-muted">
+            <TableRow className={selectableTableHeaderClass}>
               <TableHead
-                className="w-36 cursor-pointer select-none hover:bg-accent"
+                className="w-[140px] cursor-pointer select-none"
                 onClick={() => toggleSort("surname")}
               >
                 Prezime {sortIndicator("surname")}
               </TableHead>
               <TableHead
-                className="w-32 cursor-pointer select-none hover:bg-accent"
+                className="w-[120px] cursor-pointer select-none"
                 onClick={() => toggleSort("name")}
               >
                 Ime {sortIndicator("name")}
               </TableHead>
               <TableHead
-                className="w-32 cursor-pointer select-none hover:bg-accent"
+                className="w-[115px] cursor-pointer select-none text-left"
                 onClick={() => toggleSort("oib")}
               >
                 OIB {sortIndicator("oib")}
               </TableHead>
-              <TableHead className="w-16">PTT</TableHead>
               <TableHead
-                className="w-32 cursor-pointer select-none hover:bg-accent"
+                className="w-[120px] cursor-pointer select-none"
                 onClick={() => toggleSort("city")}
               >
                 Grad {sortIndicator("city")}
               </TableHead>
-              <TableHead>Adresa</TableHead>
-              <TableHead className="w-32">Vrsta</TableHead>
-              <TableHead className="w-36">Telefon</TableHead>
+              <TableHead className="w-[190px]">Adresa</TableHead>
+              <TableHead className="w-[130px] text-left">Telefon</TableHead>
+              <TableHead className="w-[220px]">E-mail</TableHead>
+              <TableHead className="w-[120px]">Vrsta</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -265,27 +279,35 @@ export function IznajmljivaciClient({
                     ? selectedRowRef
                     : undefined
                 }
-                className={
-                  selectedLandlord?.id === landlord.id
-                    ? "bg-accent cursor-pointer"
-                    : "cursor-pointer hover:bg-muted/50"
-                }
+                className={selectableTableRowClass(
+                  selectedLandlord?.id === landlord.id,
+                )}
                 onClick={() => handleSelectLandlord(landlord)}
               >
                 <TableCell className="font-medium">
                   {landlord.surname}
                 </TableCell>
                 <TableCell>{landlord.name}</TableCell>
-                <TableCell className="font-mono text-sm">
+                <TableCell className="text-left font-mono text-sm">
                   {landlord.oib}
                 </TableCell>
-                <TableCell>{landlord.city?.zip}</TableCell>
                 <TableCell>{landlord.city?.name}</TableCell>
-                <TableCell>{landlord.address}</TableCell>
+                <TableCell
+                  className="w-[190px] max-w-0 truncate"
+                  title={landlord.address}
+                >
+                  {landlord.address}
+                </TableCell>
+                <TableCell className="text-left">{landlord.phone}</TableCell>
+                <TableCell
+                  className="w-[220px] max-w-0 truncate"
+                  title={landlord.email ?? undefined}
+                >
+                  {landlord.email}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {vrstaLabel(landlord.vrstaIznajmljivaca)}
                 </TableCell>
-                <TableCell>{landlord.phone}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -294,26 +316,32 @@ export function IznajmljivaciClient({
 
       {/* Donje dvije tablice */}
       <div
-        className={`grid grid-cols-[3fr_2fr] gap-4 ${isPending ? "opacity-60" : ""}`}
+        className={cn(
+          "mt-5 grid grid-cols-[3fr_2fr] items-stretch gap-4",
+          isPending && "opacity-60",
+        )}
       >
-        {/* Kapaciteti */}
-        <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Kapaciteti — {selectedLandlord?.surname} {selectedLandlord?.name}
-          </h2>
-          <div className="rounded-md border">
+        {/* Smještajne jedinice */}
+        <div className="flex flex-col">
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold">Smještajne jedinice</h2>
+            <span className="text-sm text-muted-foreground">
+              {selectedLandlord?.surname} {selectedLandlord?.name}
+            </span>
+          </div>
+          <div className="h-[190px] overflow-y-auto rounded-md border bg-card">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Naziv</TableHead>
-                  <TableHead className="w-24 text-center">Br. soba</TableHead>
-                  <TableHead className="w-24 text-center">
-                    Br. kreveta
+              <TableHeader className="sticky top-0 z-10 bg-muted">
+                <TableRow className={selectableTableHeaderClass}>
+                  <TableHead className="w-[22%]">Naziv</TableHead>
+                  <TableHead className="w-[32%]">Vrsta</TableHead>
+                  <TableHead className="w-[14%] text-right">Sobe</TableHead>
+                  <TableHead className="w-[17%] text-right">
+                    Kreveta
                   </TableHead>
-                  <TableHead className="w-24 text-center">
-                    Maks. osoba
+                  <TableHead className="w-[15%] text-right">
+                    Pom. l.
                   </TableHead>
-                  <TableHead className="w-32">Tip smještaja</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -323,32 +351,34 @@ export function IznajmljivaciClient({
                       colSpan={5}
                       className="py-6 text-center text-muted-foreground"
                     >
-                      Nema apartmana.
+                      Nema smještajnih jedinica.
                     </TableCell>
                   </TableRow>
                 )}
                 {accommodations.map((apt) => (
                   <TableRow
                     key={apt.id}
-                    className={
-                      selectedAccommodation?.id === apt.id
-                        ? "bg-accent cursor-pointer"
-                        : "cursor-pointer hover:bg-muted/50"
-                    }
+                    className={cn(
+                      "h-9",
+                      selectableTableRowClass(
+                        selectedAccommodation?.id === apt.id,
+                      ),
+                    )}
                     onClick={() => handleSelectAccommodation(apt)}
                   >
                     <TableCell className="font-medium">{apt.name}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-muted-foreground">
+                      {vrstaApartmanaLabels[apt.vrstaApartmana] ??
+                        apt.vrstaApartmana}
+                    </TableCell>
+                    <TableCell className="text-right">
                       {apt.brojSoba}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-right">
                       {apt.brojKreveta}
                     </TableCell>
-                    <TableCell className="text-center">
-                      {apt.maxOsoba ?? "—"}
-                    </TableCell>
-                    <TableCell className="capitalize text-sm text-muted-foreground">
-                      {apt.vrstaApartmana}
+                    <TableCell className="text-right">
+                      {apt.brojPomocnihLezajeva ?? "—"}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -358,24 +388,32 @@ export function IznajmljivaciClient({
         </div>
 
         {/* Cjenik */}
-        <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Cjenik — {selectedAccommodation?.name ?? "—"}
-          </h2>
-          <div className="rounded-md border">
+        <div className="flex flex-col">
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold">Cjenik</h2>
+            <span className="text-sm text-muted-foreground">
+              {selectedAccommodation?.name ?? "—"}
+            </span>
+          </div>
+          <div className="h-[190px] overflow-y-auto rounded-md border bg-card">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Datum od</TableHead>
-                  <TableHead>Datum do</TableHead>
-                  <TableHead className="text-right">Cijena (€)</TableHead>
+              <TableHeader className="sticky top-0 z-10 bg-muted">
+                <TableRow className={selectableTableHeaderClass}>
+                  <TableHead className="w-1/4">Datum od</TableHead>
+                  <TableHead className="w-1/4">Datum do</TableHead>
+                  <TableHead className="w-1/4 text-right">
+                    Cijena (€)
+                  </TableHead>
+                  <TableHead className="w-1/4 text-right">
+                    Cijena izn.
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pricelist.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={3}
+                      colSpan={4}
                       className="py-6 text-center text-muted-foreground"
                     >
                       Nema cjenika.
@@ -388,6 +426,11 @@ export function IznajmljivaciClient({
                     <TableCell>{formatDate(entry.dateTo)}</TableCell>
                     <TableCell className="text-right font-medium">
                       {formatHrDecimal(parseFloat(entry.pricePerNight), 2)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {entry.landlordPrice
+                        ? formatHrDecimal(parseFloat(entry.landlordPrice), 2)
+                        : "—"}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -11,6 +11,7 @@ export async function getLandlords() {
       oib: landlords.oib,
       address: landlords.address,
       phone: landlords.phone,
+      email: landlords.email,
       vrstaIznajmljivaca: landlords.vrstaIznajmljivaca,
       tipProvizije: landlords.tipProvizije,
       iznos: landlords.iznos,

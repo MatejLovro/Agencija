@@ -1,8 +1,9 @@
-export default function DashboardPage() {
+export default function PocetnaPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-800">Dobrodošli</h1>
-      <p className="mt-2 text-gray-500">Odaberite sekciju iz izbornika.</p>
+    <div className="flex h-full min-h-[60vh] items-center justify-center rounded-xl bg-gradient-to-b from-background to-muted/40">
+      <p className="text-sm text-muted-foreground">
+        Odaberite modul iz izbornika.
+      </p>
     </div>
   );
 }

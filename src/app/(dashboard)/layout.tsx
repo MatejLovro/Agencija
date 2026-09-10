@@ -1,6 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
-import { TopBar } from "@/components/layout/top-bar";
 import { Footer } from "@/components/layout/footer";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 export default function DashboardLayout({
   children,
@@ -8,13 +8,12 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden">
+    <SidebarProvider className="h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar />
-        <main className="flex-1 overflow-auto bg-muted/30 p-6">{children}</main>
+      <SidebarInset className="overflow-hidden bg-muted/30">
+        <div className="flex-1 overflow-auto p-6">{children}</div>
         <Footer />
-      </div>
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
