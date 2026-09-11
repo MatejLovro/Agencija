@@ -77,6 +77,30 @@ function getNavItems(form: HTMLFormElement): HTMLElement[] {
   });
 }
 
+/**
+ * Fokusira sljedeći kbnav "nav item" u formi nakon `el`, istim redoslijedom
+ * kojim se kreće `useFormKeyboardNav` na Enter. Koriste ga komponente koje
+ * su same unutar IGNORE_SELECTOR (npr. `role="combobox"`) i zato ne prolaze
+ * kroz form-level Enter handler, ali žele isto "idi na sljedeće polje"
+ * ponašanje kad je Enter pritisnut u njihovom zatvorenom/mirujućem stanju.
+ */
+export function focusNextKbNavItem(el: HTMLElement) {
+  const form = el.closest("form");
+  if (!form) return;
+
+  const items = getNavItems(form);
+  const currentIndex = items.indexOf(el);
+  if (currentIndex === -1) return;
+
+  const next = items[currentIndex + 1];
+  if (next) {
+    next.focus();
+    if (next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement) {
+      next.select?.();
+    }
+  }
+}
+
 export function useFormKeyboardNav() {
   return useCallback((e: KeyboardEvent<HTMLFormElement>) => {
     if (e.key !== "Enter") return;
@@ -97,6 +121,8 @@ export function useFormKeyboardNav() {
 
     const isCheckbox =
       target.tagName === "BUTTON" && target.getAttribute("role") === "checkbox";
+    const isRadio =
+      target.tagName === "BUTTON" && target.getAttribute("role") === "radio";
 
     if (target.tagName === "TEXTAREA") {
       if (e.ctrlKey || e.shiftKey) {
@@ -106,16 +132,37 @@ export function useFormKeyboardNav() {
       e.preventDefault();
     } else if (target.tagName === "INPUT") {
       e.preventDefault();
-    } else if (isCheckbox) {
-      // Ne prevenirati default: native <button> Enter-aktivacija (toggle)
-      // mora ostati netaknuta — checkbox se i dalje mijenja kao inače.
-      // Fokus svejedno pomičemo dalje da Enter poštuje isti redoslijed
-      // kao Tab.
+    } else if (isCheckbox || isRadio) {
+      // Ne prevenirati default: native <button> Enter-aktivacija (checkbox
+      // toggle / Radix radio selekcija) mora ostati netaknuta. Fokus
+      // svejedno pomičemo dalje da Enter poštuje isti redoslijed kao Tab.
     } else {
       return;
     }
 
     const items = getNavItems(form);
+
+    if (isRadio) {
+      // RadioGroupItem je namjerno izbačen iz getNavItems (roving tabindex —
+      // samo jedan item u grupi je tabable u danom trenutku, pa se ne smije
+      // tretirati kao normalna "stanica"). Zato se sljedeća stanica traži po
+      // DOM poziciji cijele grupe (radiogroup root), ne po indeksu itema.
+      const group = target.closest('[role="radiogroup"]');
+      if (!group) return;
+      const next = items.find(
+        (el) =>
+          group.compareDocumentPosition(el) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      if (next) {
+        next.focus();
+        if (next instanceof HTMLInputElement || next instanceof HTMLTextAreaElement) {
+          next.select?.();
+        }
+      }
+      return;
+    }
+
     const currentIndex = items.indexOf(target);
     if (currentIndex === -1) return;
 

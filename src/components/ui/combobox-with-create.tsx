@@ -18,6 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { focusNextKbNavItem } from "@/hooks/use-form-keyboard-nav";
 
 export type ComboboxOption = {
   value: number | string;
@@ -57,6 +58,10 @@ export function ComboboxWithCreate({
   const [createError, setCreateError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [localOptions, setLocalOptions] = useState<ComboboxOption[]>(options);
+  // Kontrolira cmdk-ov interni "highlighted" state — vidi CityCombobox.tsx
+  // za detaljan opis problema i rationale (highlight bi inače uvijek kretao
+  // od prve stavke po abecedi umjesto od trenutno odabrane).
+  const [highlighted, setHighlighted] = useState("");
 
   const selectedOption = localOptions.find((opt) => opt.value === value);
 
@@ -124,6 +129,7 @@ export function ComboboxWithCreate({
           setIsCreating(false);
           setSearch("");
           setCreateError(null);
+          setHighlighted("");
         }
       }}
     >
@@ -133,11 +139,38 @@ export function ComboboxWithCreate({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
+          data-kbnav-stop
           className={cn(
             "w-full justify-between font-normal",
             !selectedOption && "text-muted-foreground",
             className,
           )}
+          onClick={() => {
+            if (!open && selectedOption) {
+              setHighlighted(String(selectedOption.value));
+            }
+          }}
+          onKeyDown={(e) => {
+            if (!open && e.key === "ArrowDown") {
+              e.preventDefault();
+              if (selectedOption) setHighlighted(String(selectedOption.value));
+              setOpen(true);
+              return;
+            }
+
+            if (!open && e.key === "Enter") {
+              if (selectedOption) {
+                // Validna vrijednost je već odabrana i lista je zatvorena —
+                // Enter ne otvara listu, nego se ponaša kao ostala polja u
+                // formi (isti "idi na sljedeće polje" mehanizam). Vidi
+                // CityCombobox.tsx za detaljan opis pattern-a.
+                e.preventDefault();
+                focusNextKbNavItem(e.currentTarget);
+              } else {
+                setOpen(true);
+              }
+            }
+          }}
         >
           {selectedOption
             ? selectedOption.label
@@ -194,11 +227,18 @@ export function ComboboxWithCreate({
             </div>
           </div>
         ) : (
-          <Command shouldFilter={false}>
+          <Command
+            shouldFilter={false}
+            value={highlighted}
+            onValueChange={setHighlighted}
+          >
             <CommandInput
               placeholder="Pretraži..."
               value={search}
-              onValueChange={setSearch}
+              onValueChange={(v) => {
+                setSearch(v);
+                setHighlighted("");
+              }}
             />
             <CommandList>
               <CommandEmpty className="py-2">

@@ -17,6 +17,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { AddCityDialog } from "./AddCityDialog";
+import { focusNextKbNavItem } from "@/hooks/use-form-keyboard-nav";
 
 interface City {
   id: number;
@@ -40,6 +41,11 @@ export function CityCombobox({
   const [search, setSearch] = React.useState("");
   const [localCities, setLocalCities] = React.useState<City[]>(cities);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  // Kontrolira cmdk-ov interni "highlighted" state. Postavlja se eksplicitno
+  // na odabranu stavku kad se lista otvori klikom/Enterom (da highlight ne
+  // krene od prve stavke po abecedi), a resetira na "" kad se otvori
+  // tipkanjem znaka (da cmdk sam highlighta prvi filtrirani rezultat).
+  const [highlighted, setHighlighted] = React.useState("");
 
   const selectedCity = localCities.find((c) => c.id === value);
 
@@ -79,9 +85,15 @@ export function CityCombobox({
               "w-full justify-between font-normal bg-muted/40 h-9 rounded-sm border-input hover:border-input-hover focus-visible:ring-1 aria-expanded:border-ring aria-expanded:ring-1 aria-expanded:ring-ring",
               error && "border-destructive",
             )}
+            onClick={() => {
+              if (!open && selectedCity) {
+                setHighlighted(selectedCity.name);
+              }
+            }}
             onKeyDown={(e) => {
               if (!open && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
                 e.preventDefault();
+                setHighlighted("");
                 setSearch(e.key);
                 setOpen(true);
                 // Nakon otvaranja, postavi cursor na kraj inputa
@@ -92,6 +104,26 @@ export function CityCombobox({
                     searchInputRef.current.focus();
                   }
                 }, 0);
+                return;
+              }
+
+              if (!open && e.key === "ArrowDown") {
+                e.preventDefault();
+                if (selectedCity) setHighlighted(selectedCity.name);
+                setOpen(true);
+                return;
+              }
+
+              if (!open && e.key === "Enter") {
+                if (selectedCity) {
+                  // Validna vrijednost je već odabrana i lista je zatvorena —
+                  // Enter ne otvara listu, nego se ponaša kao ostala polja u
+                  // formi (isti "idi na sljedeće polje" mehanizam).
+                  e.preventDefault();
+                  focusNextKbNavItem(e.currentTarget);
+                } else {
+                  setOpen(true);
+                }
               }
             }}
           >
@@ -101,6 +133,8 @@ export function CityCombobox({
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
           <Command
+            value={highlighted}
+            onValueChange={setHighlighted}
             onKeyDown={(e) => {
               // Insert je lokalni shortcut samo za ovaj combobox — otvara
               // istu "Dodaj novi grad" akciju kao klik, bez upisivanja
@@ -117,7 +151,10 @@ export function CityCombobox({
               ref={searchInputRef}
               placeholder="Pretraži grad..."
               value={search}
-              onValueChange={setSearch}
+              onValueChange={(v) => {
+                setSearch(v);
+                setHighlighted("");
+              }}
             />
             <CommandList>
               {filtered.length > 0 && (
