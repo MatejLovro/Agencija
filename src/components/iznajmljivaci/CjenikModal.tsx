@@ -244,6 +244,7 @@ export function CjenikModal({
                           placeholder="dd.mm.gggg."
                           maxLength={10}
                           className="bg-muted/40"
+                          disabled={isEdit}
                           {...field}
                           ref={(el) => {
                             field.ref(el);
@@ -279,6 +280,7 @@ export function CjenikModal({
                           placeholder="dd.mm.gggg."
                           maxLength={10}
                           className="bg-muted/40"
+                          disabled={isEdit}
                           {...field}
                           onChange={(e) =>
                             field.onChange(formatDateInput(e.target.value))
