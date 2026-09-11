@@ -35,4 +35,24 @@ export type KalendarFiltri = {
   kucniLjubimac: boolean;
   pogledNaMore: boolean;
   samoPrioritetan: boolean;
+  imaTerasu: boolean;
+  imaPunjacAuta: boolean;
+  aktivnostBicikliranje: boolean;
+  aktivnostRonjenje: boolean;
+  aktivnostPlaninarenje: boolean;
+  vrstaApartmana:
+    | "apartman"
+    | "soba"
+    | "studio"
+    | "vila"
+    | "kuca"
+    | "mobilna_kucica"
+    | null;
+  brojZvjezdica: number | null;
+  udaljenostMoreOd: number | null;
+  udaljenostMoreDo: number | null;
+  udaljenostCentarOd: number | null;
+  udaljenostCentarDo: number | null;
+  udaljenostTrgovinaOd: number | null;
+  udaljenostTrgovinaDo: number | null;
 };

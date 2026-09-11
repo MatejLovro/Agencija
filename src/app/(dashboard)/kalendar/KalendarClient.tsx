@@ -6,6 +6,8 @@ import KalendarFiltriForm from "@/components/kalendar/KalendarFiltriForm";
 import KalendarGantt from "@/components/kalendar/KalendarGantt";
 import RezervacijaModal from "@/components/kalendar/RezervacijaModal";
 import { KalendarFiltri, KalendarIznajmljivac } from "@/types/kalendar.types";
+import type { CityRow } from "@/lib/db/queries/cities";
+import type { LandlordRow } from "@/lib/db/queries/landlords";
 import {
   actionFetchKalendarData,
   actionProvjeriMoguceRezerviranje,
@@ -50,6 +52,39 @@ function getTodayIso(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function praznaFiltri(datumOd: string, datumDo: string): KalendarFiltri {
+  return {
+    gradId: null,
+    landlordId: null,
+    datumOd,
+    datumDo,
+    brojSoba: null,
+    brojKreveta: null,
+    brojPomocnihLezajeva: null,
+    samoPotvrdjene: false,
+    samoNepotvrdjene: false,
+    imaKlima: false,
+    imaParking: false,
+    imaWifi: false,
+    kucniLjubimac: false,
+    pogledNaMore: false,
+    samoPrioritetan: false,
+    imaTerasu: false,
+    imaPunjacAuta: false,
+    aktivnostBicikliranje: false,
+    aktivnostRonjenje: false,
+    aktivnostPlaninarenje: false,
+    vrstaApartmana: null,
+    brojZvjezdica: null,
+    udaljenostMoreOd: null,
+    udaljenostMoreDo: null,
+    udaljenostCentarOd: null,
+    udaljenostCentarDo: null,
+    udaljenostTrgovinaOd: null,
+    udaljenostTrgovinaDo: null,
+  };
+}
+
 // ─── Tip za otvoreni modal rezervacije ──────────────────────────────────────
 
 type RezervacijaModalState = {
@@ -60,7 +95,15 @@ type RezervacijaModalState = {
 
 // ─── Komponenta ──────────────────────────────────────────────────────────────
 
-export default function KalendarClient() {
+interface KalendarClientProps {
+  cities: CityRow[];
+  landlords: LandlordRow[];
+}
+
+export default function KalendarClient({
+  cities,
+  landlords,
+}: KalendarClientProps) {
   const defaultRange = useMemo(() => computeDefaultRange(), []);
   const today = useMemo(() => getTodayIso(), []);
 
@@ -101,23 +144,7 @@ export default function KalendarClient() {
 
   // Ponovno dohvaća trenutno prikazani raspon (koristi se nakon spremanja rezervacije)
   function refreshKalendar() {
-    handleSearch({
-      gradId: null,
-      landlordId: null,
-      datumOd,
-      datumDo,
-      brojSoba: null,
-      brojKreveta: null,
-      brojPomocnihLezajeva: null,
-      samoPotvrdjene: false,
-      samoNepotvrdjene: false,
-      imaKlima: false,
-      imaParking: false,
-      imaWifi: false,
-      kucniLjubimac: false,
-      pogledNaMore: false,
-      samoPrioritetan: false,
-    });
+    handleSearch(praznaFiltri(datumOd, datumDo));
   }
 
   async function handleIzradaRezervacije(
@@ -153,23 +180,7 @@ export default function KalendarClient() {
   }
 
   useEffect(() => {
-    handleSearch({
-      gradId: null,
-      landlordId: null,
-      datumOd: defaultRange.od,
-      datumDo: defaultRange.do,
-      brojSoba: null,
-      brojKreveta: null,
-      brojPomocnihLezajeva: null,
-      samoPotvrdjene: false,
-      samoNepotvrdjene: false,
-      imaKlima: false,
-      imaParking: false,
-      imaWifi: false,
-      kucniLjubimac: false,
-      pogledNaMore: false,
-      samoPrioritetan: false,
-    });
+    handleSearch(praznaFiltri(defaultRange.od, defaultRange.do));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -190,6 +201,8 @@ export default function KalendarClient() {
         isLoading={isLoading}
         defaultDatumOd={datumOd}
         defaultDatumDo={datumDo}
+        cities={cities}
+        landlords={landlords}
       />
 
       {/* Gantt tablica */}

@@ -68,6 +68,53 @@ export async function getKalendarData(
   if (filtri.pogledNaMore) {
     accUvjeti.push(eq(accommodations.pogledNaMore, true));
   }
+  if (filtri.imaTerasu) {
+    accUvjeti.push(eq(accommodations.imaTerasu, true));
+  }
+  if (filtri.imaPunjacAuta) {
+    accUvjeti.push(eq(accommodations.imaPunjacAuta, true));
+  }
+  if (filtri.aktivnostBicikliranje) {
+    accUvjeti.push(eq(accommodations.aktivnostBicikliranje, true));
+  }
+  if (filtri.aktivnostRonjenje) {
+    accUvjeti.push(eq(accommodations.aktivnostRonjenje, true));
+  }
+  if (filtri.aktivnostPlaninarenje) {
+    accUvjeti.push(eq(accommodations.aktivnostPlaninarenje, true));
+  }
+  if (filtri.vrstaApartmana !== null) {
+    accUvjeti.push(eq(accommodations.vrstaApartmana, filtri.vrstaApartmana));
+  }
+  if (filtri.brojZvjezdica !== null) {
+    accUvjeti.push(eq(accommodations.brojZvjezdica, filtri.brojZvjezdica));
+  }
+  if (filtri.udaljenostMoreOd !== null) {
+    accUvjeti.push(gte(accommodations.udaljenostMore, filtri.udaljenostMoreOd));
+  }
+  if (filtri.udaljenostMoreDo !== null) {
+    accUvjeti.push(lte(accommodations.udaljenostMore, filtri.udaljenostMoreDo));
+  }
+  if (filtri.udaljenostCentarOd !== null) {
+    accUvjeti.push(
+      gte(accommodations.udaljenostCentar, filtri.udaljenostCentarOd),
+    );
+  }
+  if (filtri.udaljenostCentarDo !== null) {
+    accUvjeti.push(
+      lte(accommodations.udaljenostCentar, filtri.udaljenostCentarDo),
+    );
+  }
+  if (filtri.udaljenostTrgovinaOd !== null) {
+    accUvjeti.push(
+      gte(accommodations.udaljenostTrgovina, filtri.udaljenostTrgovinaOd),
+    );
+  }
+  if (filtri.udaljenostTrgovinaDo !== null) {
+    accUvjeti.push(
+      lte(accommodations.udaljenostTrgovina, filtri.udaljenostTrgovinaDo),
+    );
+  }
 
   // Uvjet preklapanja datuma: event.dateFrom <= filtri.datumDo AND event.dateTo >= filtri.datumOd
   const preklаpanjеRez = and(
