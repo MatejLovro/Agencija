@@ -33,6 +33,7 @@ import {
 } from "@/lib/actions/landlords";
 import { isoToHrDate, hrDateToIso } from "@/lib/utils/dates";
 import { useFormKeyboardNav } from "@/hooks/use-form-keyboard-nav";
+import { useDateFieldNormalize } from "@/hooks/use-date-field-normalize";
 
 export interface PricelistRow {
   id: string;
@@ -90,6 +91,34 @@ export function CjenikModal({
         }
       : DEFAULT_VALUES,
   });
+
+  const dateFromNormalize = useDateFieldNormalize(form, "dateFrom");
+  const dateToNormalize = useDateFieldNormalize(form, "dateTo");
+
+  // Nakon normalizacije jednog datuma, ponovno pokreni validaciju drugog
+  // (ako je već popunjen) — "Datum do > Datum od" usporedba ovisi o oba
+  // polja, pa promjena jednog može promijeniti ispravnost drugog.
+  function handleDateFromBlur(e: React.FocusEvent<HTMLInputElement>) {
+    dateFromNormalize.onBlur(e);
+    if (form.getValues("dateTo")) form.trigger("dateTo");
+  }
+
+  function handleDateFromKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" && e.key !== "Tab") return;
+    dateFromNormalize.onKeyDown(e);
+    if (form.getValues("dateTo")) form.trigger("dateTo");
+  }
+
+  function handleDateToBlur(e: React.FocusEvent<HTMLInputElement>) {
+    dateToNormalize.onBlur(e);
+    if (form.getValues("dateFrom")) form.trigger("dateFrom");
+  }
+
+  function handleDateToKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== "Enter" && e.key !== "Tab") return;
+    dateToNormalize.onKeyDown(e);
+    if (form.getValues("dateFrom")) form.trigger("dateFrom");
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -223,6 +252,11 @@ export function CjenikModal({
                           onChange={(e) =>
                             field.onChange(formatDateInput(e.target.value))
                           }
+                          onKeyDown={handleDateFromKeyDown}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            handleDateFromBlur(e);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -249,6 +283,11 @@ export function CjenikModal({
                           onChange={(e) =>
                             field.onChange(formatDateInput(e.target.value))
                           }
+                          onKeyDown={handleDateToKeyDown}
+                          onBlur={(e) => {
+                            field.onBlur();
+                            handleDateToBlur(e);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
