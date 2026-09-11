@@ -123,6 +123,16 @@ export function useFormKeyboardNav() {
       target.tagName === "BUTTON" && target.getAttribute("role") === "checkbox";
     const isRadio =
       target.tagName === "BUTTON" && target.getAttribute("role") === "radio";
+    // Generička custom-widget "stanica" (npr. StarRating: <div role="slider"
+    // tabIndex={0} data-kbnav-stop>) koja sama upravlja svojom Enter/Arrow
+    // semantikom (widget-level onKeyDown), ali nema vlastiti "otvoreno/
+    // zatvoreno" stanje kao combobox pa ne treba focusNextKbNavItem poziv iz
+    // widgeta — dovoljno je da forma na Enter pomakne fokus dalje.
+    const isKbnavStopWidget =
+      target.tagName !== "BUTTON" &&
+      target.tagName !== "INPUT" &&
+      target.tagName !== "TEXTAREA" &&
+      target.hasAttribute("data-kbnav-stop");
 
     if (target.tagName === "TEXTAREA") {
       if (e.ctrlKey || e.shiftKey) {
@@ -136,6 +146,8 @@ export function useFormKeyboardNav() {
       // Ne prevenirati default: native <button> Enter-aktivacija (checkbox
       // toggle / Radix radio selekcija) mora ostati netaknuta. Fokus
       // svejedno pomičemo dalje da Enter poštuje isti redoslijed kao Tab.
+    } else if (isKbnavStopWidget) {
+      e.preventDefault();
     } else {
       return;
     }

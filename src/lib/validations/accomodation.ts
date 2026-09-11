@@ -11,7 +11,7 @@ export const accommodationSchema = z.object({
     "vila",
     "kuca",
     "mobilna_kucica",
-  ]),
+  ], { message: "Vrsta je obavezna" }),
   cityId: z.number().min(1, "Grad je obavezan"),
   address: z.string().min(1, "Adresa je obavezna").max(100),
   webUrl: z

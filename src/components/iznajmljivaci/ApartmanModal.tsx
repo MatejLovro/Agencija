@@ -146,14 +146,19 @@ const TAB_FIELDS: Record<1 | 2 | 3 | 4, (keyof AccommodationFormValues)[]> = {
 const DEFAULT_VALUES: AccommodationFormValues = {
   name: "",
   fullName: "",
-  vrstaApartmana: "apartman",
+  // "" je sentinel za "ništa odabrano" — poput cityId: 0 niže. Zod tip za
+  // ovo polje je striktan enum (jer se ista shema koristi i za server-side
+  // submit tipiziranje), pa je cast ovdje namjeran i lokalno izoliran na
+  // inicijalno stanje forme; .min()/enum validacija i dalje odbija "" na
+  // submit.
+  vrstaApartmana: "" as AccommodationFormValues["vrstaApartmana"],
   cityId: 0,
   address: "",
   webUrl: "",
   brojZvjezdica: 3,
   kategorizacijskiBroj: "",
-  brojSoba: 1,
-  brojKreveta: 1,
+  brojSoba: 0,
+  brojKreveta: 0,
   brojPomocnihLezajeva: 0,
   maxOsoba: undefined,
   aktivan: true,
@@ -199,26 +204,45 @@ function StarRating({
 }) {
   const [hovered, setHovered] = useState<number | null>(null);
   return (
-    <div className="flex gap-0.5">
+    <div
+      role="slider"
+      tabIndex={0}
+      aria-valuenow={value}
+      aria-valuemin={1}
+      aria-valuemax={5}
+      aria-label="Broj zvjezdica"
+      data-kbnav-stop
+      className="flex gap-0.5 w-fit outline-none rounded-sm focus-visible:ring-1 focus-visible:ring-ring"
+      onKeyDown={(e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+          e.preventDefault();
+          onChange(Math.min(5, value + 1));
+        } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+          e.preventDefault();
+          onChange(Math.max(1, value - 1));
+        } else if (/^[1-5]$/.test(e.key)) {
+          e.preventDefault();
+          onChange(Number(e.key));
+        }
+        // Enter namjerno nije presretnut ovdje — pušta se do useFormKeyboardNav
+        // na razini forme, koji je jedini izvor "idi na sljedeće polje" logike.
+      }}
+    >
       {[1, 2, 3, 4, 5].map((star) => (
-        <button
+        <span
           key={star}
-          type="button"
           onClick={() => onChange(star)}
           onMouseEnter={() => setHovered(star)}
           onMouseLeave={() => setHovered(null)}
-          className="text-2xl leading-none transition-colors"
+          className={
+            "text-2xl leading-none transition-colors cursor-pointer " +
+            ((hovered ?? value) >= star
+              ? "text-amber-400"
+              : "text-muted-foreground/25")
+          }
         >
-          <span
-            className={
-              (hovered ?? value) >= star
-                ? "text-amber-400"
-                : "text-muted-foreground/25"
-            }
-          >
-            ★
-          </span>
-        </button>
+          ★
+        </span>
       ))}
     </div>
   );
@@ -571,6 +595,9 @@ export function ApartmanModal({
                                 value={field.value}
                                 onChange={(e) => field.onChange(e.target.value)}
                               >
+                                <option value="" disabled hidden>
+                                  Izaberite vrstu smještaja
+                                </option>
                                 <option value="apartman">Apartman</option>
                                 <option value="soba">Soba</option>
                                 <option value="studio">Studio</option>
@@ -1334,7 +1361,12 @@ export function ApartmanModal({
                         Odustani
                       </Button>
                     )}
-                    <Button key="next" type="button" onClick={handleNext}>
+                    <Button
+                      key="next"
+                      type="button"
+                      data-kbnav-stop
+                      onClick={handleNext}
+                    >
                       Dalje
                     </Button>
                   </>
