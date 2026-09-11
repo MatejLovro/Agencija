@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 
 import {
   pricelistEntrySchema,
+  findOverlappingPricelistPeriod,
   type PricelistEntryFormValues,
 } from "@/lib/validations/pricelist";
 import {
@@ -52,6 +53,9 @@ interface CjenikModalProps {
   // Za uređivanje postojećeg reda
   defaultValues?: PricelistRow;
   nextDateFrom?: string;
+  // Već učitani periodi smještajne jedinice (parent ih drži u state-u) —
+  // koristi se samo u "Dodaj" načinu za provjeru preklapanja.
+  existingEntries?: PricelistRow[];
 }
 
 const DEFAULT_VALUES: PricelistEntryFormValues = {
@@ -69,6 +73,7 @@ export function CjenikModal({
   tipProvizije,
   defaultValues,
   nextDateFrom,
+  existingEntries,
 }: CjenikModalProps) {
   const [isPending, setIsPending] = useState(false);
   const isEdit = !!defaultValues;
@@ -103,7 +108,11 @@ export function CjenikModal({
     if (form.getValues("dateTo")) form.trigger("dateTo");
   }
 
-  function handleDateFromKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleDateFromKeyDown(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    onChange: (value: string) => void,
+  ) {
+    if (handleDateSeparatorDelete(e, onChange)) return;
     if (e.key !== "Enter" && e.key !== "Tab") return;
     dateFromNormalize.onKeyDown(e);
     if (form.getValues("dateTo")) form.trigger("dateTo");
@@ -114,10 +123,64 @@ export function CjenikModal({
     if (form.getValues("dateFrom")) form.trigger("dateFrom");
   }
 
-  function handleDateToKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleDateToKeyDown(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    onChange: (value: string) => void,
+  ) {
+    if (handleDateSeparatorDelete(e, onChange)) return;
     if (e.key !== "Enter" && e.key !== "Tab") return;
     dateToNormalize.onKeyDown(e);
     if (form.getValues("dateFrom")) form.trigger("dateFrom");
+  }
+
+  /**
+   * Backspace/Delete na "." separatoru inače ne mijenja ništa vidljivo —
+   * formatDateInput uvijek rekonstruira isti string iz preostalih znamenki,
+   * pa native brisanje same točke izgleda kao da se ništa nije dogodilo.
+   * Kad bi native brisanje pogodilo separator, umjesto toga ručno obrišemo
+   * stvarnu znamenku s te strane separatora i postavimo kursor.
+   * Vraća true ako je slučaj obrađen (pozivatelj onda ne smije nastaviti).
+   */
+  function handleDateSeparatorDelete(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    onChange: (value: string) => void,
+  ): boolean {
+    if (e.key !== "Backspace" && e.key !== "Delete") return false;
+
+    const input = e.currentTarget;
+    const { selectionStart, selectionEnd, value } = input;
+    if (selectionStart === null || selectionEnd === null) return false;
+    if (selectionStart !== selectionEnd) return false; // ima selekciju — native ponašanje je u redu
+
+    const isBackspace = e.key === "Backspace";
+    const separatorIndex = isBackspace ? selectionStart - 1 : selectionStart;
+    if (separatorIndex < 0 || separatorIndex >= value.length) return false;
+    if (value[separatorIndex] !== ".") return false;
+
+    // Backspace: obriši znamenku ISPRED točke. Delete: obriši znamenku IZA
+    // točke (prva znamenka sljedeće skupine).
+    const digitIndex = isBackspace ? separatorIndex - 1 : separatorIndex + 1;
+    if (digitIndex < 0 || digitIndex >= value.length) return false;
+
+    e.preventDefault();
+    const newValue = value.slice(0, digitIndex) + value.slice(digitIndex + 1);
+    const formatted = formatDateInput(newValue);
+    onChange(formatted);
+
+    // Kursor treba stati odmah iza znamenke koja je sad na mjestu obrisane —
+    // izbroji koliko je znamenki (bez točaka) ispred digitIndex u sirovom
+    // unosu i pronađi poziciju iza te iste znamenke u formatiranom stringu.
+    const digitsBefore = newValue.slice(0, digitIndex).replace(/\./g, "").length;
+    let newCursor = 0;
+    let seenDigits = 0;
+    while (newCursor < formatted.length && seenDigits < digitsBefore) {
+      if (formatted[newCursor] !== ".") seenDigits++;
+      newCursor++;
+    }
+    requestAnimationFrame(() => {
+      input.setSelectionRange(newCursor, newCursor);
+    });
+    return true;
   }
 
   useEffect(() => {
@@ -142,25 +205,63 @@ export function CjenikModal({
   }, [open, defaultValues, nextDateFrom]);
 
   async function onSubmit(data: PricelistEntryFormValues) {
+    const payload = {
+      ...data,
+      dateFrom: hrDateToIso(data.dateFrom) ?? data.dateFrom,
+      dateTo: hrDateToIso(data.dateTo) ?? data.dateTo,
+    };
+
+    // Rana povratna informacija na klijentu — server ponovno provjerava
+    // isto (trust boundary), ova provjera je samo za brži UX bez round-tripa.
+    if (!isEdit) {
+      const overlap = findOverlappingPricelistPeriod(
+        payload.dateFrom,
+        payload.dateTo,
+        existingEntries ?? [],
+      );
+      if (overlap) {
+        form.setError("dateFrom", {
+          type: "manual",
+          message: `Period se preklapa s postojećim periodom ${isoToHrDate(overlap.dateFrom)} - ${isoToHrDate(overlap.dateTo)}`,
+        });
+        return;
+      }
+    }
+
     setIsPending(true);
     try {
-      const payload = {
-        ...data,
-        dateFrom: hrDateToIso(data.dateFrom) ?? data.dateFrom,
-        dateTo: hrDateToIso(data.dateTo) ?? data.dateTo,
-      };
-
-      const result = isEdit
-        ? await actionUpdatePricelistEntry(defaultValues!.id, payload)
-        : await actionCreatePricelistEntry(accommodationId, payload);
-
-      onSaved({
-        id: result.id,
-        dateFrom: result.dateFrom,
-        dateTo: result.dateTo,
-        pricePerNight: result.pricePerNight,
-        landlordPrice: result.landlordPrice ?? null,
-      });
+      if (isEdit) {
+        const result = await actionUpdatePricelistEntry(
+          defaultValues!.id,
+          payload,
+        );
+        onSaved({
+          id: result.id,
+          dateFrom: result.dateFrom,
+          dateTo: result.dateTo,
+          pricePerNight: result.pricePerNight,
+          landlordPrice: result.landlordPrice ?? null,
+        });
+      } else {
+        const result = await actionCreatePricelistEntry(
+          accommodationId,
+          payload,
+        );
+        if (result.error || !result.data) {
+          form.setError("dateFrom", {
+            type: "manual",
+            message: result.error ?? "Greška pri spremanju.",
+          });
+          return;
+        }
+        onSaved({
+          id: result.data.id,
+          dateFrom: result.data.dateFrom,
+          dateTo: result.data.dateTo,
+          pricePerNight: result.data.pricePerNight,
+          landlordPrice: result.data.landlordPrice ?? null,
+        });
+      }
 
       handleClose();
     } catch (error) {
@@ -242,7 +343,7 @@ export function CjenikModal({
                           type="text"
                           inputMode="numeric"
                           placeholder="dd.mm.gggg."
-                          maxLength={10}
+                          maxLength={11}
                           className="bg-muted/40"
                           disabled={isEdit}
                           {...field}
@@ -253,7 +354,9 @@ export function CjenikModal({
                           onChange={(e) =>
                             field.onChange(formatDateInput(e.target.value))
                           }
-                          onKeyDown={handleDateFromKeyDown}
+                          onKeyDown={(e) =>
+                            handleDateFromKeyDown(e, field.onChange)
+                          }
                           onBlur={(e) => {
                             field.onBlur();
                             handleDateFromBlur(e);
@@ -278,14 +381,16 @@ export function CjenikModal({
                           type="text"
                           inputMode="numeric"
                           placeholder="dd.mm.gggg."
-                          maxLength={10}
+                          maxLength={11}
                           className="bg-muted/40"
                           disabled={isEdit}
                           {...field}
                           onChange={(e) =>
                             field.onChange(formatDateInput(e.target.value))
                           }
-                          onKeyDown={handleDateToKeyDown}
+                          onKeyDown={(e) =>
+                            handleDateToKeyDown(e, field.onChange)
+                          }
                           onBlur={(e) => {
                             field.onBlur();
                             handleDateToBlur(e);

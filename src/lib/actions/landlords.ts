@@ -15,10 +15,11 @@ import {
   copyPricelistToEmptyAccommodations,
 } from "@/lib/db/queries/pricelist";
 import { getLandlordByOib } from "@/lib/db/queries/landlords";
-import { hrDateToIso } from "../utils/dates";
+import { hrDateToIso, isoToHrDate } from "../utils/dates";
 import type { LandlordFormValues } from "@/lib/validations/landlord";
 import type { AccommodationFormValues } from "@/lib/validations/accomodation";
 import type { PricelistEntryFormValues } from "@/lib/validations/pricelist";
+import { findOverlappingPricelistPeriod } from "@/lib/validations/pricelist";
 import { getPricelistByAccommodation } from "@/lib/db/queries/pricelist";
 import { getAccommodationById } from "@/lib/db/queries/accommodations";
 
@@ -229,6 +230,21 @@ export async function actionCreatePricelistEntry(
   accommodationId: string,
   data: PricelistEntryFormValues,
 ) {
+  // Server je trust boundary — periodi se nikad ne mijenjaju nakon
+  // spremanja, pa se ovdje ponovno provjerava preklapanje neovisno o
+  // klijentskoj provjeri (stale state, dva otvorena taba i sl.).
+  const existing = await getPricelistByAccommodation(accommodationId);
+  const overlap = findOverlappingPricelistPeriod(
+    data.dateFrom,
+    data.dateTo,
+    existing,
+  );
+  if (overlap) {
+    return {
+      error: `Period se preklapa s postojećim periodom ${isoToHrDate(overlap.dateFrom)} - ${isoToHrDate(overlap.dateTo)}`,
+    };
+  }
+
   const entry = await createPricelistEntry({
     accommodationId,
     dateFrom: data.dateFrom,
@@ -238,7 +254,7 @@ export async function actionCreatePricelistEntry(
   });
 
   revalidatePath("/iznajmljivaci");
-  return entry;
+  return { data: entry };
 }
 
 export async function actionUpdatePricelistEntry(

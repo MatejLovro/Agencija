@@ -579,6 +579,7 @@ export function UrediIznajmljivacClient({
           tipProvizije={tipProvizije}
           nextDateFrom={editingPricelistEntry ? undefined : nextDateFrom}
           defaultValues={editingPricelistEntry ?? undefined}
+          existingEntries={currentPricelist}
         />
       )}
 

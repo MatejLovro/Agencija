@@ -57,3 +57,34 @@ export const pricelistEntrySchema = z
   );
 
 export type PricelistEntryFormValues = z.infer<typeof pricelistEntrySchema>;
+
+export interface ExistingPricelistPeriod {
+  id: string;
+  dateFrom: string; // ISO
+  dateTo: string; // ISO
+}
+
+/**
+ * Standardna inclusive interval-overlap provjera: noviOd <= postojeciDo I
+ * noviDo >= postojeciOd. Periodi se nikad ne mijenjaju nakon spremanja
+ * (jedini način izmjene je brisanje + dodavanje), pa se provjerava protiv
+ * SVIH postojećih perioda iste smještajne jedinice, ne samo zadnjeg.
+ *
+ * Vraća prvi period s kojim se novi preklapa, ili null ako nema preklapanja.
+ * `excludeId` isključuje jedan red iz provjere (npr. red koji se trenutno
+ * uređuje) — u "Dodaj" načinu se ne prosljeđuje.
+ */
+export function findOverlappingPricelistPeriod(
+  newDateFrom: string, // ISO
+  newDateTo: string, // ISO
+  existingPeriods: ExistingPricelistPeriod[],
+  excludeId?: string,
+): ExistingPricelistPeriod | null {
+  for (const period of existingPeriods) {
+    if (period.id === excludeId) continue;
+    if (newDateFrom <= period.dateTo && newDateTo >= period.dateFrom) {
+      return period;
+    }
+  }
+  return null;
+}
