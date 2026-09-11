@@ -30,7 +30,7 @@ export function NoviIznajmljivacClient({
     useUnsavedChangesGuard(isDirty, goToList);
 
   return (
-    <div className="max-w-[1200px] w-full mx-auto px-4 py-6 bg-background">
+    <div className="max-w-[1200px] px-4 py-6 bg-background">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-2xl font-medium">Novi iznajmljivač</h1>
       </div>

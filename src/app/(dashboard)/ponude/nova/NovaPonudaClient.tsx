@@ -289,7 +289,7 @@ export default function NovaPonudaClient({
         onSubmit={form.handleSubmit(onSubmit, (errors) => {
           console.log("Validation errors:", errors);
         })}
-        className="space-y-6 p-6 max-w-5xl mx-auto"
+        className="space-y-6 p-6 max-w-5xl"
       >
         {/* SEKCIJA: PONUDA */}
         <div>

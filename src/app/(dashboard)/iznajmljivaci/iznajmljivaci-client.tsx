@@ -190,7 +190,7 @@ export function IznajmljivaciClient({
   }
 
   return (
-    <div className="flex h-full max-w-[1200px] w-full mx-auto flex-col">
+    <div className="flex h-full max-w-[1200px] flex-col">
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2">
         <div className="relative w-[300px]">

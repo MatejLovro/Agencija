@@ -154,23 +154,25 @@ export function UrediIznajmljivacClient({
       (a) => a.id !== selectedAccommodationId && !a.hasPricelist,
     );
 
+  async function fetchAndStorePricelist(id: string) {
+    const entries = await actionGetPricelistByAccommodation(id);
+    setPricelist((prev) => ({
+      ...prev,
+      [id]: entries.map((e) => ({
+        id: e.id,
+        dateFrom: e.dateFrom,
+        dateTo: e.dateTo,
+        pricePerNight: e.pricePerNight,
+        landlordPrice: e.landlordPrice ?? null,
+      })),
+    }));
+  }
+
   function handleSelectAccommodation(id: string) {
     setSelectedAccommodationId(id);
     setSelectedPricelistEntryId(null);
     if (!pricelist[id]) {
-      startPricelistTransition(async () => {
-        const entries = await actionGetPricelistByAccommodation(id);
-        setPricelist((prev) => ({
-          ...prev,
-          [id]: entries.map((e) => ({
-            id: e.id,
-            dateFrom: e.dateFrom,
-            dateTo: e.dateTo,
-            pricePerNight: e.pricePerNight,
-            landlordPrice: e.landlordPrice ?? null,
-          })),
-        }));
-      });
+      startPricelistTransition(() => fetchAndStorePricelist(id));
     }
   }
 
@@ -243,6 +245,10 @@ export function UrediIznajmljivacClient({
       // dohvati svježe podatke (jednostavno i sigurno, budući da je fetch
       // po jedinici i onako lazy/on-demand).
       setPricelist({});
+      // Izvorišna jedinica (selectedAccommodationId) ostaje prikazana u
+      // desnoj tablici i nakon brisanja cachea — bez ovoga bi izgledala kao
+      // da nema cjenika sve dok korisnik ponovno ne klikne na nju.
+      await fetchAndStorePricelist(selectedAccommodationId);
 
       setCopyPricelistMessage(
         result.copiedToCount === 1
@@ -253,7 +259,7 @@ export function UrediIznajmljivacClient({
   }
 
   return (
-    <div className="max-w-[1200px] w-full mx-auto px-4 py-6 bg-background">
+    <div className="max-w-[1200px] px-4 py-6 bg-background">
       <div className="flex items-center justify-between mb-5">
         <h1 className="text-2xl font-medium">Uredi: {displayName}</h1>
         <Button type="button" variant="outline" size="sm" onClick={requestExit}>
